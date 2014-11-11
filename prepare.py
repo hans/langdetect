@@ -2,6 +2,8 @@ import argparse
 from collections import defaultdict
 import os
 import os.path
+import re
+import subprocess
 
 
 def parse_args():
@@ -13,6 +15,10 @@ def parse_args():
     parser.add_argument('languages', type=lambda s: s.split(','),
                         help=('Comma-separated lest of first two letters '
                               'of names of each language to retain'))
+
+    parser.add_argument('-o', '--output-directory', default='prepared',
+                        help=('Directory to which prepared files should be '
+                              'output'))
 
     arguments = parser.parse_args()
 
@@ -61,6 +67,15 @@ def load_split_data(split_name, ogi_dir, languages):
     return dict(ret)
 
 
+# Expected file extensions associated with each section of the corpus
+TYPE_EXTENSIONS = {
+    'calls': 'wav',
+    'logs': 'log',
+    'logs2': 'lg2',
+    'seglola': 'seg',
+}
+
+
 def get_data_file(recording_id, data_type, ogi_dir):
     """
     A general utility procedure to retrieve the path to a data file
@@ -102,13 +117,89 @@ def get_data_file(recording_id, data_type, ogi_dir):
             raise ValueError("Invalid call ID in recording ID: %s"
                              % recording_id)
 
-    files = os.listdir(language_path)
-    for file in files:
-        if file.startswith(recording_id):
-            return os.path.join(language_path, file)
+    filename = recording_id + '.' + TYPE_EXTENSIONS[data_type]
+    file_path = os.path.join(language_path, filename)
+    if os.path.isfile(file_path):
+        return file_path
+    else:
+        raise ValueError("Recording file %s not found in directory %s"
+                         % (filename, language_path))
 
-    raise ValueError("Recording %s not found in directory %s"
-                     % (recording_id, language_path))
+
+def process_recording(recording_id, ogi_dir):
+    """
+    Generate features for the given recording.
+
+    Returns a path to an ARFF file containing features for the given
+    recording.
+    """
+
+    wav_path = get_data_file(recording_id, 'calls', ogi_dir)
+
+    decoded_path = decode_call_file(wav_path)
+    split_paths = split_call_file(decoded_path)
+
+    print split_paths
+
+    # TODO extract features from split audio files (openSMILE)
+    # TODO synthesize extracted features into hierarchical features
+    # TODO run openSMILE on entire call as well
+    # TODO add features from seglola files
+    # TODO put it all in an ARFF output for the given recording and
+    #   return path to ARFF file
+
+
+def add_suffix(filename, suffix):
+    """
+    Add a dotted suffix to the given filename.
+
+    >>> add_suffix('foo.wav', 'bar')
+    'foo.bar.wav'
+    """
+
+    parts = filename.rsplit('.', 1)
+    parts.insert(len(parts) - 1, suffix)
+    return '.'.join(parts)
+
+
+def decode_call_file(call_path):
+    """
+    Decode a NIST SPHERE call file into a normal WAV file.
+    """
+
+    decoded_path = add_suffix(call_path, 'decoded')
+
+    try:
+        retval = subprocess.call(["w_decode", '-f', call_path, decoded_path])
+    except OSError, e:
+        raise RuntimeError("Decoding failed. Is NIST SPHERE on your "
+                           "path? (Look for a `w_decode` binary.)", e)
+
+    return decoded_path
+
+
+def split_call_file(call_path, split_size=2):
+    """
+    Split the given call audio file into equally-sized parts. Returns a
+    list of paths to the resultant splits (which are placed in the same
+    directory as the provided file, with some new extension).
+    """
+
+    new_path = add_suffix(call_path, 'split')
+
+    sox_params = 'trim 0 2 : newfile : restart'.split()
+    retval = subprocess.call(['sox', call_path, new_path] + sox_params)
+    if retval != 0:
+        raise RuntimeError("sox error: retval %i" % retval)
+
+    # TODO remove splits which are empty / short?
+
+    # Filename prefix of split files
+    split_prefix = os.path.basename(call_path).rsplit('.', 1)[0] + '.split'
+    call_dir = os.path.dirname(call_path)
+    return [os.path.join(call_dir, filename)
+            for filename in os.listdir(call_dir)
+            if filename.startswith(split_prefix)]
 
 
 if __name__ == '__main__':
@@ -119,6 +210,6 @@ if __name__ == '__main__':
                  for split in splits}
 
     rec = filenames['train']['en'][0]
-    print get_data_file(rec, 'calls', args.ogi_dir)
 
-    # TODO: gather files, split with pysox, remove splits which are too short / are empty
+    print get_data_file(rec, 'calls', args.ogi_dir)
+    arff_file = process_recording(rec, args.ogi_dir)
