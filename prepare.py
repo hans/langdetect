@@ -1,9 +1,13 @@
 import argparse
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 import os
 import os.path
 import re
 import subprocess
+
+
+Recording = namedtuple('Recording', ['split_files', 'segments'])
+Segment = namedtuple('Segment', ['start_frame', 'end_frame', 'label'])
 
 
 def parse_args():
@@ -122,8 +126,8 @@ def get_data_file(recording_id, data_type, ogi_dir):
     if os.path.isfile(file_path):
         return file_path
     else:
-        raise ValueError("Recording file %s not found in directory %s"
-                         % (filename, language_path))
+        raise IOError("Recording file %s not found in directory %s"
+                      % (filename, language_path))
 
 
 def process_recording(recording_id, ogi_dir):
@@ -147,6 +151,11 @@ def process_recording(recording_id, ogi_dir):
     # TODO add features from seglola files
     # TODO put it all in an ARFF output for the given recording and
     #   return path to ARFF file
+
+    segments = get_recording_segments(recording_id, ogi_dir)
+    print segments
+
+    return Recording(split_paths, None)
 
 
 def add_suffix(filename, suffix):
@@ -202,6 +211,30 @@ def split_call_file(call_path, split_size=2):
             if filename.startswith(split_prefix)]
 
 
+def get_recording_segments(recording_id, ogi_dir):
+    """
+    Get the hand-labeled segments associated with the given recording.
+
+    Not all recordings have this hand-labeled data. If there is no data
+    for the given recording, this function returns `None`.
+    """
+
+    try:
+        seg_path = get_data_file(recording_id, 'seglola', ogi_dir)
+    except IOError:
+        return None
+
+    segments = []
+    with open(seg_path, 'r') as seg_f:
+        for line in seg_f:
+            if line.startswith('#'):
+                continue
+            data = line.split()
+            segments.append(Segment(int(data[0]), int(data[1]), data[2]))
+
+    return segments
+
+
 if __name__ == '__main__':
     args = parse_args()
 
@@ -209,7 +242,7 @@ if __name__ == '__main__':
     filenames = {split: load_split_data(split, args.ogi_dir, args.languages)
                  for split in splits}
 
-    rec = filenames['train']['en'][0]
+    rec = filenames['train']['en'][6]
 
     print get_data_file(rec, 'calls', args.ogi_dir)
     arff_file = process_recording(rec, args.ogi_dir)
