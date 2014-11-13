@@ -6,8 +6,11 @@ import re
 import subprocess
 
 
-Recording = namedtuple('Recording', ['split_files', 'segments'])
-Segment = namedtuple('Segment', ['start_frame', 'end_frame', 'label'])
+Recording = namedtuple('Recording', ['id', 'segments'])
+
+# Defines a particular segment of a call recording. Segments are usually
+# fixed-length; a recording can have an arbitrary number of segments.
+Segment = namedtuple('Segment', ['path', 'features'])
 
 
 def parse_args():
@@ -130,7 +133,7 @@ def get_data_file(recording_id, data_type, ogi_dir):
                       % (filename, language_path))
 
 
-def process_recording(recording_id, ogi_dir):
+def process_recording(recording_id, args):
     """
     Generate features for the given recording.
 
@@ -138,12 +141,10 @@ def process_recording(recording_id, ogi_dir):
     recording.
     """
 
-    wav_path = get_data_file(recording_id, 'calls', ogi_dir)
+    wav_path = get_data_file(recording_id, 'calls', args.ogi_dir)
 
     decoded_path = decode_call_file(wav_path)
-    split_paths = split_call_file(decoded_path)
-
-    print split_paths
+    segment_paths = split_call_file(decoded_path)
 
     # TODO extract features from split audio files (openSMILE)
     # TODO synthesize extracted features into hierarchical features
@@ -152,10 +153,7 @@ def process_recording(recording_id, ogi_dir):
     # TODO put it all in an ARFF output for the given recording and
     #   return path to ARFF file
 
-    segments = get_recording_segments(recording_id, ogi_dir)
-    print segments
-
-    return Recording(split_paths, None)
+    return Recording(recording_id, segment_paths)
 
 
 def add_suffix(filename, suffix):
@@ -189,9 +187,9 @@ def decode_call_file(call_path):
 
 def split_call_file(call_path, split_size=2):
     """
-    Split the given call audio file into equally-sized parts. Returns a
-    list of paths to the resultant splits (which are placed in the same
-    directory as the provided file, with some new extension).
+    Split the given call audio file into equally-sized segments. Returns
+    a list of paths to the resultant segments (which are placed in the
+    same directory as the provided file, with some new extension).
     """
 
     new_path = add_suffix(call_path, 'split')
@@ -201,9 +199,9 @@ def split_call_file(call_path, split_size=2):
     if retval != 0:
         raise RuntimeError("sox error: retval %i" % retval)
 
-    # TODO remove splits which are empty / short?
+    # TODO remove segments which are empty / short?
 
-    # Filename prefix of split files
+    # Filename prefix of segment files
     split_prefix = os.path.basename(call_path).rsplit('.', 1)[0] + '.split'
     call_dir = os.path.dirname(call_path)
     return [os.path.join(call_dir, filename)
@@ -211,38 +209,20 @@ def split_call_file(call_path, split_size=2):
             if filename.startswith(split_prefix)]
 
 
-def get_recording_segments(recording_id, ogi_dir):
-    """
-    Get the hand-labeled segments associated with the given recording.
-
-    Not all recordings have this hand-labeled data. If there is no data
-    for the given recording, this function returns `None`.
-    """
-
-    try:
-        seg_path = get_data_file(recording_id, 'seglola', ogi_dir)
-    except IOError:
-        return None
-
-    segments = []
-    with open(seg_path, 'r') as seg_f:
-        for line in seg_f:
-            if line.startswith('#'):
-                continue
-            data = line.split()
-            segments.append(Segment(int(data[0]), int(data[1]), data[2]))
-
-    return segments
-
-
 if __name__ == '__main__':
     args = parse_args()
 
-    splits = ['train', 'devtest', 'evaltest']
+    splits = ['evaltest']#['train']#, 'devtest', 'evaltest']
     filenames = {split: load_split_data(split, args.ogi_dir, args.languages)
                  for split in splits}
 
-    rec = filenames['train']['en'][6]
+    data = {}
+    for split in filenames:
+        data[split] = {}
+        for language in filenames[split]:
+            data[split][language] = [process_recording(rec, args)
+                                     for rec in filenames[split][language]]
+    print data
 
-    print get_data_file(rec, 'calls', args.ogi_dir)
-    arff_file = process_recording(rec, args.ogi_dir)
+    # print get_data_file(rec, 'calls', args.ogi_dir)
+    # arff_file = process_recording(rec, args.ogi_dir)
