@@ -1,9 +1,12 @@
 import argparse
 from collections import defaultdict, namedtuple
+import logging
 import os
 import os.path
+import pickle
 import re
 import subprocess
+from tempfile import NamedTemporaryFile
 
 
 Recording = namedtuple('Recording', ['id', 'segments'])
@@ -11,6 +14,8 @@ Recording = namedtuple('Recording', ['id', 'segments'])
 # Defines a particular segment of a call recording. Segments are usually
 # fixed-length; a recording can have an arbitrary number of segments.
 Segment = namedtuple('Segment', ['path', 'features'])
+
+SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 
 
 def parse_args():
@@ -27,6 +32,11 @@ def parse_args():
                         help=('Directory to which prepared files should be '
                               'output'))
 
+    parser.add_argument('-c', '--opensmile-config',
+                        default=os.path.join(SCRIPT_DIR, 'config',
+                                             'opensmile.001.conf'),
+                        help=('Path to openSMILE configuration file'))
+
     arguments = parser.parse_args()
 
     arguments.ogi_dir = os.path.expanduser(arguments.ogi_dir)
@@ -36,6 +46,10 @@ def parse_args():
     if 'seglola' not in ogi_files:
         raise ValueError('Provided directory is not valid OGI corpus directory. '
                          'Should contain a "seglola" subdirectory.')
+
+    if not os.path.isdir(arguments.output_directory):
+        raise ValueError('Output directory %s does not exist'
+                         % arguments.output_directory)
 
     return arguments
 
@@ -146,14 +160,13 @@ def process_recording(recording_id, args):
     decoded_path = decode_call_file(wav_path)
     segment_paths = split_call_file(decoded_path)
 
-    # TODO extract features from split audio files (openSMILE)
-    # TODO synthesize extracted features into hierarchical features
-    # TODO run openSMILE on entire call as well
-    # TODO add features from seglola files
-    # TODO put it all in an ARFF output for the given recording and
-    #   return path to ARFF file
+    segments = []
+    for segment_path in segment_paths:
+        features = extract_audio_features(segment_path, args)
+        if features is not None:
+            segments.append(Segment(segment_path, features))
 
-    return Recording(recording_id, segment_paths)
+    return Recording(recording_id, segments)
 
 
 def add_suffix(filename, suffix):
@@ -209,20 +222,80 @@ def split_call_file(call_path, split_size=2):
             if filename.startswith(split_prefix)]
 
 
+def extract_audio_features(audio_path, args):
+    """
+    Extract openSMILE (and other?) features from the audio at the given
+    path. May return `None` if the provided audio is too short or
+    otherwise invalid.
+
+    openSMILE feature extraction is parameterized entirely by the
+    external openSMILE config, which is provided as a command-line
+    option in `args`.
+
+    This function assumes that the openSMILE configuration file directs
+    output to CSV format.
+
+    Returns a dictionary of string keys and numeric values.
+    """
+
+    # Get a temp path for openSMILE output
+    with NamedTemporaryFile() as outfile:
+        try:
+            retval = subprocess.call(['SMILExtract', '-C', args.opensmile_config,
+                                      '-I', audio_path,
+                                      '-O', outfile.name])
+        except OSError, e:
+            raise RuntimeError("openSMILE execution failed. Is "
+                               "openSMILE (e.g., the SMILExtract "
+                               "binary) on your path?", e)
+        else:
+            if retval != 0:
+                raise RuntimeError("openSMILE error: retval %i" % retval)
+
+            data_lines = outfile.readlines()
+            if len(data_lines) == 1:
+                logging.warn("Audio file at %s too short -- skipping",
+                             audio_path)
+                return None
+
+            if len(data_lines) != 2:
+                outfile.delete = False
+
+                raise RuntimeError("Unexpected SMILE CSV output: we "
+                                   "just want a two-line CSV. Check "
+                                   "output at %s" % outfile.name)
+
+            keys = data_lines[0].split(';')
+            values = data_lines[1].split(';')
+
+            features = {}
+            for key, value in zip(keys, values):
+                try:
+                    value = float(value)
+                except ValueError:
+                    pass
+                else:
+                    features[key] = value
+
+            return features
+
+
 if __name__ == '__main__':
     args = parse_args()
 
-    splits = ['evaltest']#['train']#, 'devtest', 'evaltest']
+    splits = ['train', 'devtest', 'evaltest']
     filenames = {split: load_split_data(split, args.ogi_dir, args.languages)
                  for split in splits}
 
-    data = {}
     for split in filenames:
-        data[split] = {}
         for language in filenames[split]:
-            data[split][language] = [process_recording(rec, args)
-                                     for rec in filenames[split][language]]
-    print data
+            recordings = [process_recording(rec, args)
+                          for rec in filenames[split][language]]
 
-    # print get_data_file(rec, 'calls', args.ogi_dir)
-    # arff_file = process_recording(rec, args.ogi_dir)
+            out_path = os.path.join(args.output_directory,
+                                    '%s.%s.pkl' % (language, split))
+            with open(out_path, 'w') as out_f:
+                pickle.dump(recordings, out_path)
+
+            logging.info('Wrote data for language %s, split %s to %s'
+                         % (language, split, out_path))
