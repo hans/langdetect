@@ -8,12 +8,8 @@ import re
 import subprocess
 from tempfile import NamedTemporaryFile
 
+from recording import Recording, Segment
 
-Recording = namedtuple('Recording', ['id', 'segments'])
-
-# Defines a particular segment of a call recording. Segments are usually
-# fixed-length; a recording can have an arbitrary number of segments.
-Segment = namedtuple('Segment', ['path', 'features'])
 
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 
@@ -295,7 +291,7 @@ if __name__ == '__main__':
             out_path = os.path.join(args.output_directory,
                                     '%s.%s.pkl' % (language, split))
             with open(out_path, 'w') as out_f:
-                pickle.dump(recordings, out_path)
+                pickle.dump(recordings, out_f)
 
             logging.info('Wrote data for language %s, split %s to %s'
                          % (language, split, out_path))
