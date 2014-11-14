@@ -32,9 +32,14 @@ def makeNodule(segments, prevNodule):
 
     return Nodule(features=noduleFeatures)
 
-def classifyNodule(nodule):
-    # dummy
-    return 'Deutsch'
+
+def classifyNodule(model, nodule):
+    # Extract features in the same order used during training
+    keys = sorted(nodule.features.keys())
+
+    example = [nodule.features[key] for key in keys]
+    return model.predict(example)
+
 
 def classifyRecording(model, recording):
     """
@@ -49,6 +54,7 @@ def classifyRecording(model, recording):
         votes[noduleVote] += 1
 
     return votes.most_common()[1]
+
 
 def createNodules(recording):
     # loop and create nodules (assume for now we're stepping one-by-one)
@@ -125,7 +131,18 @@ def train(languages):
 
 
 def test(model, languages):
-    pass
+    dev_path = 'decoded/%s.devtest.pkl'
+
+    for lang in languages:
+        with open(dev_path % lang, 'r') as data_f:
+            recordings = pickle.load(data_f)
+
+        for recording in recordings:
+            nodules = createNodules(recording)
+            guess = classifyRecording(model, recording)
+
+            print 'guess', guess, 'gold', lang
+
 
 
 if __name__ == '__main__':
