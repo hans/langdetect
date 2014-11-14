@@ -38,7 +38,7 @@ def classifyNodule(model, nodule):
     keys = sorted(nodule.features.keys())
 
     example = [nodule.features[key] for key in keys]
-    return model.predict(example)
+    return model.predict(example)[0]
 
 
 def classifyRecording(model, recording):
@@ -51,9 +51,10 @@ def classifyRecording(model, recording):
     votes = Counter()
     for nodule in nodules:
         noduleVote = classifyNodule(model, nodule)
+        print noduleVote
         votes[noduleVote] += 1
 
-    return votes.most_common()[1]
+    return votes.most_common(1)[0]
 
 
 def createNodules(recording):
@@ -63,7 +64,7 @@ def createNodules(recording):
 
     # Temporary fix: if can't form even a single nodule, repeat last segment
     # TODO: after milestone, find a better solution
-    if nNodules == 0:
+    if nNodules <= 0:
         while len(segments) != noduleK:
             segments.append(segments[-1])
 
@@ -81,12 +82,15 @@ def createNodules(recording):
 
 
 def train(languages):
+    # Sort language labels so we know outputs are consistent among train, test
+    languages.sort()
+
     noduleKeys = None # we need to be consistent in how we order them for the classifier
     noduleX = [] # input nodule features
     noduleY = [] # output classifications
 
     train_path = 'decoded/%s.train.pkl'
-    for lang in languages:
+    for langIndex, lang in enumerate(languages):
         with open(train_path % lang, 'r') as data_f:
             recordings = pickle.load(data_f)
         print 'unpickled',lang
@@ -111,7 +115,7 @@ def train(languages):
         noduleX.extend(noduleXNew)
 
         # Labels for this language
-        noduleY.extend([lang] * len(noduleXNew))
+        noduleY.extend([langIndex] * len(noduleXNew))
 
         print 'created nodules for', lang
 
@@ -129,17 +133,20 @@ def train(languages):
 
 
 def test(model, languages):
+    # Sort language labels so we know outputs are consistent among train, test
+    languages.sort()
+
     dev_path = 'decoded/%s.devtest.pkl'
 
-    for lang in languages:
+    for langIndex, lang in enumerate(languages):
         with open(dev_path % lang, 'r') as data_f:
             recordings = pickle.load(data_f)
 
         for recording in recordings:
             nodules = createNodules(recording)
-            guess = classifyRecording(model, recording)
+            guess = classifyRecording(model, recording)[0]
 
-            print 'guess', guess, 'gold', lang
+            print 'guess', languages[guess], 'gold', lang
 
 
 
