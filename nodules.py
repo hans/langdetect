@@ -33,8 +33,14 @@ def createNodules(recording):
     recordingId, segments = recording
     nNodules = len(segments) - noduleK + 1 #number of nodules
 
+    # Temporary fix: if can't form even a single nodule, repeat last segment
+    # TODO: after milestone, find a better solution
     if nNodules == 0:
-        print 'nNodules == 0', len(segments)
+        localFeatures = [seg.features for seg in segments]
+        while len(localFeatures) != noduleK:
+            localFeatures.append(localFeatures[-1]) # sorry, this makes no sense
+        features = noduleFeatures(localFeatures, None)
+        return [Nodule(features=features)]
 
     noduleList = []
     for idx in range(nNodules):
@@ -58,8 +64,6 @@ if __name__ == '__main__':
         with open('decoded/'+lang+'.devtest.pkl', 'r') as data_f:
             recordings = pickle.load(data_f)
         print 'unpickled',lang
-
-        print recordings[:1]
 
         nodules = [createNodules(rec) for rec in recordings]
 
