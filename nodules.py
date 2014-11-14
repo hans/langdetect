@@ -17,10 +17,6 @@ def makeNodule(segments, prevNodule):
     # TODO: after deadline, do a better job for when when prevNodules is None
     if prevNodule is None:
         prevNodule = Nodule(features = Counter()) #i.e. assume everything is 0
-    else:
-        print type(prevNodule)
-        print prevNodule.key
-        print prevNodule.features.keys()
 
     noduleFeatures = {}
     for featureKey in segments[0].features:
@@ -76,9 +72,7 @@ def createNodules(recording):
     noduleList = []
     prevNodule = None
     for idx in range(nNodules):
-        print 'prevNodule: type',type(prevNodule)
         nodule = makeNodule(segments[idx:idx + noduleK], prevNodule)
-        print type(nodule)
         noduleList.append(nodule)
 
         prevNodule = nodule
@@ -91,7 +85,7 @@ def train(languages):
     noduleX = [] # input nodule features
     noduleY = [] # output classifications
 
-    train_path = 'decoded/%s.train.pkl'
+    train_path = 'decoded/%s.devtest.pkl'
     for lang in languages:
         with open(train_path % lang, 'r') as data_f:
             recordings = pickle.load(data_f)
@@ -103,12 +97,8 @@ def train(languages):
         for recording in recordings:
             nodules.extend(createNodules(recording))
 
-        print nodules[1]
-        print type(nodules[1])
-
         if noduleKeys == None and len(recordings) != 0:
             noduleKeys = sorted([key for key in nodules[0].features])
-        print 'nodule features: ', noduleKeys
 
         # Training set is just this standard feature set for every
         # nodule
