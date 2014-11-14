@@ -2,7 +2,7 @@
 import pickle
 
 from recording import Recording, Segment, Nodule
-from collections import namedtuple
+from collections import namedtuple, Counter
 from sklearn import linear_model
 
 # let noduleK be the number of segments each nodule takes in
@@ -14,6 +14,11 @@ def makeNodule(segments, prevNodule):
     # for the future, we have to make sure we take care of the case where prevFeatures is None
     assert len(segments) == noduleK
 
+    # TODO: after deadline, do a better job for when when prevNodules is None
+    if prevNodule is None:
+        prevNodule = Nodule(features = Counter()) #i.e. assume everything is 0
+        print prevNodule.features[('avg','hello')]
+
     noduleFeatures = {}
     for featureKey in segments[0].features:
         featureValues = [segment.features[featureKey] for segment in segments]
@@ -21,7 +26,9 @@ def makeNodule(segments, prevNodule):
         # here go all the features
         noduleFeatures[('avg', featureKey)] = sum(featureValues) / float(noduleK)
         noduleFeatures[('delta', featureKey)] = featureValues[-1] - featureValues[1]
-        # TODO: insert features using prevFeatures
+
+        # insert features using prevFeatures
+        noduleFeatures[('prev avg', featureKey)] = prevNodule.features[('avg',featureKey)]
 
     return noduleFeatures
 
