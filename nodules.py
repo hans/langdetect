@@ -97,9 +97,6 @@ def train(languages):
         for recording in recordings:
             nodules.extend(createNodules(recording))
 
-        print nodules[1]
-        print type(nodules[1])
-
         if noduleKeys == None and len(recordings) != 0:
             noduleKeys = sorted([key for key in nodules[0].features])
         print 'nodule features: ', noduleKeys
@@ -118,6 +115,7 @@ def train(languages):
 
         print 'created nodules for', lang
 
+    print 'Training model..'
     logistic = linear_model.LogisticRegression(C=1e5)
     logistic.fit(noduleX, noduleY)
 
