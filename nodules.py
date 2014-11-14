@@ -2,11 +2,9 @@
 
 import pickle
 
-from recording import Recording, Segment
+from recording import Recording, Segment, Nodule
 
 from collections import namedtuple
-
-Nodule = namedtuple('Nodule', ['features'])
 
 with open('data/dummy_data.pkl', 'r') as data_f:
     recording = pickle.load(data_f)
@@ -26,11 +24,10 @@ def noduleFeatures(featureDicts, prevFeatures):
     # currently, these don't talk to each other yet, i.e. we're ignoring prevFeatures
     # for the future, we have to make sure we take care of the case where prevFeatures is None
     assert len(featureDicts) == noduleK
-    #segFeatures = [key for seg in featureDicts for key in seg.features.keys()]
     dictFeatures = {}
     for featureKey in segmentFeatures:
         vals = [fDict[featureKey] for fDict in featureDicts]
-        print 'vals',vals
+        # here go all the features
         dictFeatures[('avg',featureKey)] = sum(vals)/float(noduleK)
         print 'dictFeatures',dictFeatures
 
@@ -51,6 +48,9 @@ for idx in range(nNodules):
     noduleList.append(Nodule(features=features))
 
 print noduleList
+
+with open('data/dummy_nodules.pkl', 'w') as data_f:
+    pickle.dump(noduleList, data_f)
 
 
 ### Scratch notes
