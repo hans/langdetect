@@ -22,7 +22,7 @@ def makeNodule(segments, prevNodule):
         noduleFeatures[('delta', featureKey)] = featureValues[-1] - featureValues[1]
         # TODO: insert features using prevFeatures
 
-    return noduleFeatures
+    return Nodule(features=noduleFeatures)
 
 def classifyNodule(nodule):
     # dummy
