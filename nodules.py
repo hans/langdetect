@@ -1,4 +1,4 @@
-import pickle
+import cPickle as pickle
 
 from recording import Recording, Segment, Nodule
 from collections import Counter, namedtuple
@@ -75,27 +75,34 @@ if __name__ == '__main__':
     noduleKeys = None # we need to be consistent in how we order them for the classifier
     noduleX = [] # input nodule features
     noduleY = [] # output classifications
+
     for lang in languages:
         with open('decoded/'+lang+'.devtest.pkl', 'r') as data_f:
             recordings = pickle.load(data_f)
         print 'unpickled',lang
 
+        # Build training data: just a big collection of nodules
         nodules = [createNodules(rec) for rec in recordings]
 
-        #print nodules[:10]
+        print nodules[:10]
 
         if noduleKeys == None and len(recordings) != 0:
-            noduleKeys = sorted([key for key in nodules[0]])
-        print noduleKeys
+            noduleKeys = sorted([key for key in nodules[0].features])
+        print 'nodule features: ', noduleKeys
 
+        # Training set is just this standard feature set for every
+        # nodule
         noduleXNew = [[nodule.features[key] for key in noduleKeys]
                       for nodule in nodules]
-        #print noduleXNew[0]
-        print [lang]*10
 
-        noduleX += noduleXNew
-        noduleY += [lang]*len(noduleXNew)
-        print 'created nodule list'
+        #print noduleXNew[0]
+
+        noduleX.extend(noduleXNew)
+
+        # Labels for this language
+        noduleY.extend([lang] * len(noduleXNew))
+
+        print 'created nodules for ', lang
 
     logistic = linear_model.LogisticRegression(C=1e5)
     logistic.fit(noduleX, noduleY)
