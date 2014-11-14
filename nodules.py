@@ -16,7 +16,10 @@ def makeNodule(segments, prevNodule):
     # TODO: after deadline, do a better job for when when prevNodules is None
     if prevNodule is None:
         prevNodule = Nodule(features = Counter()) #i.e. assume everything is 0
-        print prevNodule.features[('avg','hello')]
+    else:
+        print type(prevNodule)
+        print prevNodule.key
+        print prevNodule.features.keys()
 
     noduleFeatures = {}
     for featureKey in segments[0].features:
@@ -27,6 +30,7 @@ def makeNodule(segments, prevNodule):
         noduleFeatures[('delta', featureKey)] = featureValues[-1] - featureValues[1]
 
         # insert features using prevFeatures
+        #print ('avg',featureKey) in prevNodule.features, prevNodule.features[('avg',featureKey)]
         noduleFeatures[('prev avg', featureKey)] = prevNodule.features[('avg',featureKey)]
 
     return noduleFeatures
@@ -65,7 +69,9 @@ def createNodules(recording):
     noduleList = []
     prevNodule = None
     for idx in range(nNodules):
+        print 'prevNodule: type',type(prevNodule)
         nodule = makeNodule(segments[idx:idx + noduleK], prevNodule)
+        print type(nodule)
         noduleList.append(nodule)
 
         prevNodule = nodule
