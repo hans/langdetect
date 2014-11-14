@@ -17,7 +17,6 @@ def makeNodule(segments, prevNodule):
     # TODO: after deadline, do a better job for when when prevNodules is None
     if prevNodule is None:
         prevNodule = Nodule(features = Counter()) #i.e. assume everything is 0
-        print prevNodule.features[('avg','hello')]
 
     noduleFeatures = {}
     for featureKey in segments[0].features:
@@ -28,6 +27,7 @@ def makeNodule(segments, prevNodule):
         noduleFeatures[('delta', featureKey)] = featureValues[-1] - featureValues[1]
 
         # insert features using prevFeatures
+        #print ('avg',featureKey) in prevNodule.features, prevNodule.features[('avg',featureKey)]
         noduleFeatures[('prev avg', featureKey)] = prevNodule.features[('avg',featureKey)]
 
     return Nodule(features=noduleFeatures)
@@ -103,7 +103,6 @@ def train(languages):
 
         if noduleKeys == None and len(recordings) != 0:
             noduleKeys = sorted([key for key in nodules[0].features])
-        print 'nodule features: ', noduleKeys
 
         # Training set is just this standard feature set for every
         # nodule
