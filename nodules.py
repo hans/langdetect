@@ -1,35 +1,26 @@
 # Disclaimer: this is still very rough
-
 import pickle
 
 from recording import Recording, Segment, Nodule
-
 from collections import namedtuple
+from sklearn import linear_model
 
-with open('data/dummy_data.pkl', 'r') as data_f:
-    recording = pickle.load(data_f)
-
-recordingId, segments = recording
-
-segmentFeatures = [key for key in segments[0].features]
-
-# let K be the number of segments each nodule takes in
+# let noduleK be the number of segments each nodule takes in
 noduleK = 3
-nNodules = len(segments) - noduleK + 1
 
-# list of features
-def noduleFeatures(featureDicts, prevFeatures):
-    # takes in noduleK features from consecutive segments
-    # assuming "dense" dict of features (or use of Counters)
+def noduleFeatures(localFeatures, prevFeatures):
+    # Takes in noduleK features from consecutive segments
     # currently, these don't talk to each other yet, i.e. we're ignoring prevFeatures
     # for the future, we have to make sure we take care of the case where prevFeatures is None
-    assert len(featureDicts) == noduleK
+    assert len(localFeatures) == noduleK
     dictFeatures = {}
-    for featureKey in segmentFeatures:
-        vals = [fDict[featureKey] for fDict in featureDicts]
+    for featureKey in localFeatures[0]:
+        vals = [fDict[featureKey] for fDict in localFeatures]
+
         # here go all the features
         dictFeatures[('avg',featureKey)] = sum(vals)/float(noduleK)
-        print 'dictFeatures',dictFeatures
+        dictFeatures[('delta',featureKey)] = vals[-1] - vals[1]
+        # TODO: insert features using prevFeatures
 
     return dictFeatures
 
@@ -37,20 +28,64 @@ def featuresToClassification(noduleFeatures):
     # dummy
     return 'Deutsch'
 
-# loop and create nodules
-noduleList = []
-for idx in range(nNodules):
-    print idx
-    prevFeatures = noduleList[-1].features if noduleList != [] else None
-    featureDicts = [segments[i].features for i in range(idx, idx + noduleK)]
-    print 'featureDicts',featureDicts
-    features = noduleFeatures(featureDicts, prevFeatures)
-    noduleList.append(Nodule(features=features))
+def createNodules(recording):
+    # loop and create nodules (assume for now we're stepping one-by-one)
+    recordingId, segments = recording
+    nNodules = len(segments) - noduleK + 1 #number of nodules
 
-print noduleList
+    if nNodules == 0:
+        print 'nNodules == 0', len(segments)
 
-with open('data/dummy_nodules.pkl', 'w') as data_f:
-    pickle.dump(noduleList, data_f)
+    noduleList = []
+    for idx in range(nNodules):
+        prevFeatures = noduleList[-1].features if noduleList != [] else None
+        localFeatures = [segments[i].features for i in range(idx, idx + noduleK)]
+        features = noduleFeatures(localFeatures, prevFeatures)
+        noduleList.append(Nodule(features=features))
+    return noduleList
+
+
+if __name__ == '__main__':
+    # Open a pickled recording
+    # (this should be a list of pickled recordings in the real version)
+    languages = ['ge','ma']
+
+    #langNodules = {}
+    noduleKeys = None # we need to be consistent in how we order them for the classifier
+    noduleX = [] # input nodule features
+    noduleY = [] # output classifications
+    for lang in languages:
+        with open('decoded/'+lang+'.devtest.pkl', 'r') as data_f:
+            recordings = pickle.load(data_f)
+        print 'unpickled',lang
+
+        print recordings[:1]
+
+        nodules = [createNodules(rec) for rec in recordings]
+
+        #print nodules[:10]
+        
+        if noduleKeys == None and len(recordings) != 0:
+            noduleKeys = sorted([key for key in nodules[0]])
+        print noduleKeys
+
+        noduleXNew = [[nodule.features[key] for key in noduleKeys]
+                      for nodule in nodules]
+        #print noduleXNew[0]
+        print [lang]*10
+
+        noduleX += noduleXNew
+        noduleY += [lang]*len(noduleXNew)
+        print 'created nodule list'
+        
+    logistic = linear_model.LogisticRegression(C=1e5)
+    logistic.fit(noduleX, noduleY)
+
+    print 'logistic',logistic
+
+    with open('data/nodules.devtest.pkl', 'w') as data_f:
+        pickle.dump((noduleX, noduleY), data_f)
+
 
 
 ### Scratch notes
