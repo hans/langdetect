@@ -1,4 +1,4 @@
-# Disclaimer: this is still very rough
+8# Disclaimer: this is still very rough
 import pickle
 
 from recording import Recording, Segment, Nodule
@@ -8,23 +8,24 @@ from sklearn import linear_model
 # let noduleK be the number of segments each nodule takes in
 noduleK = 3
 
-def noduleFeatures(localFeatures, prevFeatures):
+def makeNodule(segments, prevNodule):
     # Takes in noduleK features from consecutive segments
     # currently, these don't talk to each other yet, i.e. we're ignoring prevFeatures
     # for the future, we have to make sure we take care of the case where prevFeatures is None
-    assert len(localFeatures) == noduleK
-    dictFeatures = {}
-    for featureKey in localFeatures[0]:
-        vals = [fDict[featureKey] for fDict in localFeatures]
+    assert len(segments) == noduleK
+
+    noduleFeatures = {}
+    for featureKey in segments[0].features:
+        featureValues = [segment.features[featureKey] for segment in segments]
 
         # here go all the features
-        dictFeatures[('avg',featureKey)] = sum(vals)/float(noduleK)
-        dictFeatures[('delta',featureKey)] = vals[-1] - vals[1]
+        noduleFeatures[('avg', featureKey)] = sum(featureValues) / float(noduleK)
+        noduleFeatures[('delta', featureKey)] = featureValues[-1] - featureValues[1]
         # TODO: insert features using prevFeatures
 
-    return dictFeatures
+    return noduleFeatures
 
-def featuresToClassification(noduleFeatures):
+def classifyNodule(nodule):
     # dummy
     return 'Deutsch'
 
@@ -36,18 +37,19 @@ def createNodules(recording):
     # Temporary fix: if can't form even a single nodule, repeat last segment
     # TODO: after milestone, find a better solution
     if nNodules == 0:
-        localFeatures = [seg.features for seg in segments]
-        while len(localFeatures) != noduleK:
-            localFeatures.append(localFeatures[-1]) # sorry, this makes no sense
-        features = noduleFeatures(localFeatures, None)
-        return [Nodule(features=features)]
+        while len(segments) != noduleK:
+            segments.append(segments[-1])
+
+        return [makeNodule(segments, None)]
 
     noduleList = []
+    prevNodule = None
     for idx in range(nNodules):
-        prevFeatures = noduleList[-1].features if noduleList != [] else None
-        localFeatures = [segments[i].features for i in range(idx, idx + noduleK)]
-        features = noduleFeatures(localFeatures, prevFeatures)
-        noduleList.append(Nodule(features=features))
+        nodule = makeNodule(segments[idx:idx + noduleK], prevNodule)
+        noduleList.append(nodule)
+
+        prevNodule = nodule
+
     return noduleList
 
 
@@ -68,7 +70,7 @@ if __name__ == '__main__':
         nodules = [createNodules(rec) for rec in recordings]
 
         #print nodules[:10]
-        
+
         if noduleKeys == None and len(recordings) != 0:
             noduleKeys = sorted([key for key in nodules[0]])
         print noduleKeys
@@ -81,7 +83,7 @@ if __name__ == '__main__':
         noduleX += noduleXNew
         noduleY += [lang]*len(noduleXNew)
         print 'created nodule list'
-        
+
     logistic = linear_model.LogisticRegression(C=1e5)
     logistic.fit(noduleX, noduleY)
 
