@@ -1,4 +1,5 @@
-import pickle
+import cPickle as pickle
+import sys
 
 from recording import Recording, Segment, Nodule
 from collections import Counter, namedtuple
@@ -33,11 +34,16 @@ def makeNodule(segments, prevNodule):
         #print ('avg',featureKey) in prevNodule.features, prevNodule.features[('avg',featureKey)]
         noduleFeatures[('prev avg', featureKey)] = prevNodule.features[('avg',featureKey)]
 
-    return noduleFeatures
+    return Nodule(features=noduleFeatures)
 
-def classifyNodule(nodule):
-    # dummy
-    return 'Deutsch'
+
+def classifyNodule(model, nodule):
+    # Extract features in the same order used during training
+    keys = sorted(nodule.features.keys())
+
+    example = [nodule.features[key] for key in keys]
+    return model.predict(example)
+
 
 def classifyRecording(model, recording):
     """
@@ -52,6 +58,7 @@ def classifyRecording(model, recording):
         votes[noduleVote] += 1
 
     return votes.most_common()[1]
+
 
 def createNodules(recording):
     # loop and create nodules (assume for now we're stepping one-by-one)
@@ -79,44 +86,82 @@ def createNodules(recording):
     return noduleList
 
 
-if __name__ == '__main__':
-    # Open a pickled recording
-    # (this should be a list of pickled recordings in the real version)
-    languages = ['ge','ma']
-
-    #langNodules = {}
+def train(languages):
     noduleKeys = None # we need to be consistent in how we order them for the classifier
     noduleX = [] # input nodule features
     noduleY = [] # output classifications
+
+    train_path = 'decoded/%s.train.pkl'
     for lang in languages:
-        with open('decoded/'+lang+'.devtest.pkl', 'r') as data_f:
+        with open(train_path % lang, 'r') as data_f:
             recordings = pickle.load(data_f)
         print 'unpickled',lang
 
-        nodules = [createNodules(rec) for rec in recordings]
+        # Build training data: just a big collection of nodules (not
+        # grouped by recording)
+        nodules = []
+        for recording in recordings:
+            nodules.extend(createNodules(recording))
 
-        #print nodules[:10]
+        print nodules[1]
+        print type(nodules[1])
 
         if noduleKeys == None and len(recordings) != 0:
-            noduleKeys = sorted([key for key in nodules[0]])
-        print noduleKeys
+            noduleKeys = sorted([key for key in nodules[0].features])
+        print 'nodule features: ', noduleKeys
 
+        # Training set is just this standard feature set for every
+        # nodule
         noduleXNew = [[nodule.features[key] for key in noduleKeys]
                       for nodule in nodules]
-        #print noduleXNew[0]
-        print [lang]*10
 
-        noduleX += noduleXNew
-        noduleY += [lang]*len(noduleXNew)
-        print 'created nodule list'
+        #print noduleXNew[0]
+
+        noduleX.extend(noduleXNew)
+
+        # Labels for this language
+        noduleY.extend([lang] * len(noduleXNew))
+
+        print 'created nodules for', lang
 
     logistic = linear_model.LogisticRegression(C=1e5)
     logistic.fit(noduleX, noduleY)
 
-    print 'logistic',logistic
+    print 'logistic', logistic
 
-    with open('data/nodules.devtest.pkl', 'w') as data_f:
-        pickle.dump((noduleX, noduleY), data_f)
+    model_path = 'data/model.logistic.pkl'
+    with open(model_path, 'w') as data_f:
+        pickle.dump(logistic, data_f)
+
+    print 'Saved model to %s.' % model_path
+
+
+def test(model, languages):
+    dev_path = 'decoded/%s.devtest.pkl'
+
+    for lang in languages:
+        with open(dev_path % lang, 'r') as data_f:
+            recordings = pickle.load(data_f)
+
+        for recording in recordings:
+            nodules = createNodules(recording)
+            guess = classifyRecording(model, recording)
+
+            print 'guess', guess, 'gold', lang
+
+
+
+if __name__ == '__main__':
+    languages = ['ge', 'ma']
+
+    if len(sys.argv) > 1:
+        with open(sys.argv[1], 'r') as model_f:
+            model = pickle.load(model_f)
+
+        # Model provided -- test.
+        test(model, languages)
+    else:
+        train(languages)
 
 
 
