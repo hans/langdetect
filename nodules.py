@@ -1,4 +1,5 @@
 import cPickle as pickle
+import sys
 
 from recording import Recording, Segment, Nodule
 from collections import Counter, namedtuple
@@ -66,12 +67,7 @@ def createNodules(recording):
     return noduleList
 
 
-if __name__ == '__main__':
-    # Open a pickled recording
-    # (this should be a list of pickled recordings in the real version)
-    languages = ['ge','ma']
-
-    #langNodules = {}
+def train(languages):
     noduleKeys = None # we need to be consistent in how we order them for the classifier
     noduleX = [] # input nodule features
     noduleY = [] # output classifications
@@ -119,6 +115,23 @@ if __name__ == '__main__':
         pickle.dump(logistic, data_f)
 
     print 'Saved model to %s.' % model_path
+
+
+def test(model, languages):
+    pass
+
+
+if __name__ == '__main__':
+    languages = ['ge', 'ma']
+
+    if len(sys.argv) > 1:
+        with open(sys.argv[1], 'r') as model_f:
+            model = pickle.load(model_f)
+
+        # Model provided -- test.
+        test(model, languages)
+    else:
+        train(languages)
 
 
 
