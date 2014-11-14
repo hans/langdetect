@@ -1,8 +1,7 @@
-8# Disclaimer: this is still very rough
 import pickle
 
 from recording import Recording, Segment, Nodule
-from collections import namedtuple, Counter
+from collections import Counter, namedtuple
 from sklearn import linear_model
 
 # let noduleK be the number of segments each nodule takes in
@@ -35,6 +34,20 @@ def makeNodule(segments, prevNodule):
 def classifyNodule(nodule):
     # dummy
     return 'Deutsch'
+
+def classifyRecording(model, recording):
+    """
+    Use a trained model to classify the given recording.
+    """
+
+    nodules = createNodules(recording)
+
+    votes = Counter()
+    for nodule in nodules:
+        noduleVote = classifyNodule(model, nodule)
+        votes[noduleVote] += 1
+
+    return votes.most_common()[1]
 
 def createNodules(recording):
     # loop and create nodules (assume for now we're stepping one-by-one)
