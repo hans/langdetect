@@ -76,15 +76,20 @@ if __name__ == '__main__':
     noduleX = [] # input nodule features
     noduleY = [] # output classifications
 
+    train_path = 'decoded/%s.train.pkl'
     for lang in languages:
-        with open('decoded/'+lang+'.devtest.pkl', 'r') as data_f:
+        with open(train_path % lang, 'r') as data_f:
             recordings = pickle.load(data_f)
         print 'unpickled',lang
 
-        # Build training data: just a big collection of nodules
-        nodules = [createNodules(rec) for rec in recordings]
+        # Build training data: just a big collection of nodules (not
+        # grouped by recording)
+        nodules = []
+        for recording in recordings:
+            nodules.extend(createNodules(recording))
 
-        print nodules[:10]
+        print nodules[1]
+        print type(nodules[1])
 
         if noduleKeys == None and len(recordings) != 0:
             noduleKeys = sorted([key for key in nodules[0].features])
@@ -102,15 +107,18 @@ if __name__ == '__main__':
         # Labels for this language
         noduleY.extend([lang] * len(noduleXNew))
 
-        print 'created nodules for ', lang
+        print 'created nodules for', lang
 
     logistic = linear_model.LogisticRegression(C=1e5)
     logistic.fit(noduleX, noduleY)
 
-    print 'logistic',logistic
+    print 'logistic', logistic
 
-    with open('data/nodules.devtest.pkl', 'w') as data_f:
-        pickle.dump((noduleX, noduleY), data_f)
+    model_path = 'data/model.logistic.pkl'
+    with open(model_path, 'w') as data_f:
+        pickle.dump(logistic, data_f)
+
+    print 'Saved model to %s.' % model_path
 
 
 
