@@ -126,7 +126,7 @@ def train(languages):
 
     print ('Normalizing all examples and all features (%i examples, %i features)..'
            % (len(noduleX), len(noduleX[0])))
-    noduleX = Normalizer().fit_transform(noduleX)
+    noduleX = preprocessing.Normalizer().fit_transform(noduleX)
     print 'Now %i examples, %i features' % (len(noduleX), len(noduleX[0]))
 
     for model_type, model_class in MODEL_TYPES.items():
