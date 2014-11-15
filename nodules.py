@@ -3,7 +3,7 @@ import sys
 
 from recording import Recording, Segment, Nodule
 from collections import Counter, namedtuple
-from sklearn import linear_model, svm
+from sklearn import linear_model, svm, preprocessing
 
 # let noduleK be the number of segments each nodule takes in
 noduleK = 3
@@ -123,6 +123,11 @@ def train(languages):
         noduleY.extend([langIndex] * len(noduleXNew))
 
         print 'created nodules for', lang
+
+    print ('Normalizing all examples and all features (%i examples, %i features)..'
+           % (len(noduleX), len(noduleX[0])))
+    noduleX = Normalizer().fit_transform(noduleX)
+    print 'Now %i examples, %i features' % (len(noduleX), len(noduleX[0]))
 
     for model_type, model_class in MODEL_TYPES.items():
         print 'Training model %s on %i examples..' % (model_type, len(noduleX))
