@@ -1,9 +1,12 @@
 import cPickle as pickle
+from functools import partial
 import sys
+
+from sklearn import linear_model, svm, metrics, preprocessing
 
 from recording import Recording, Segment, Nodule
 from collections import Counter, namedtuple
-from sklearn import linear_model, svm, metrics, preprocessing
+
 
 # let noduleK be the number of segments each nodule takes in
 noduleK = 3
@@ -51,7 +54,6 @@ def classifyRecording(model, recording):
     votes = Counter()
     for nodule in nodules:
         noduleVote = classifyNodule(model, nodule)
-        print noduleVote
         votes[noduleVote] += 1
 
     return votes.most_common(1)[0]
@@ -82,7 +84,7 @@ def createNodules(recording):
 
 
 MODEL_TYPES = {
-    'logistic': linear_model.LogisticRegression,
+    'logistic': partial(linear_model.LogisticRegression, C=1e5),
     'svm': svm.SVC,
 }
 
@@ -131,7 +133,7 @@ def train(languages):
 
     for model_type, model_class in MODEL_TYPES.items():
         print 'Training model %s on %i examples..' % (model_type, len(noduleX))
-        model = model_class(C=1e5)
+        model = model_class()
         model.fit(noduleX, noduleY)
 
         print model
@@ -184,7 +186,7 @@ def test(model, languages):
 
             print 'guess', languages[guess], 'gold', lang
 
-    print evaluate(gold, guess)
+    print evaluate(golds, guesses)
 
 if __name__ == '__main__':
     languages = ['ge', 'ma']
