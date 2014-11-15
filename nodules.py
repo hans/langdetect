@@ -170,6 +170,7 @@ def test(model, languages):
 
     dev_path = 'decoded/%s.devtest.pkl'
 
+    gold, guess = [], []
     for langIndex, lang in enumerate(languages):
         with open(dev_path % lang, 'r') as data_f:
             recordings = pickle.load(data_f)
@@ -178,7 +179,12 @@ def test(model, languages):
             nodules = createNodules(recording)
             guess = classifyRecording(model, recording)[0]
 
+            gold.append(langIndex)
+            guess.append(guess)
+
             print 'guess', languages[guess], 'gold', lang
+
+    print evaluate(gold, guess)
 
 if __name__ == '__main__':
     languages = ['ge', 'ma']
