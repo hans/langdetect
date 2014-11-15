@@ -125,7 +125,7 @@ def train(languages):
         print 'created nodules for', lang
 
     for model_type, model_class in MODEL_TYPES.items():
-        print 'Training model %s..' % model_type
+        print 'Training model %s on %i examples..' % (model_type, len(noduleX))
         model = model_class(C=1e5)
         model.fit(noduleX, noduleY)
 
