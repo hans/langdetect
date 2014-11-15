@@ -3,7 +3,7 @@ import sys
 
 from recording import Recording, Segment, Nodule
 from collections import Counter, namedtuple
-from sklearn import linear_model
+from sklearn import linear_model, svm
 
 # let noduleK be the number of segments each nodule takes in
 noduleK = 3
@@ -81,6 +81,12 @@ def createNodules(recording):
     return noduleList
 
 
+MODEL_TYPES = {
+    'logistic': linear_model.LogisticRegression,
+    'svm': svm.SVC,
+}
+
+
 def train(languages):
     # Sort language labels so we know outputs are consistent among train, test
     languages.sort()
@@ -118,17 +124,18 @@ def train(languages):
 
         print 'created nodules for', lang
 
-    print 'Training model..'
-    logistic = linear_model.LogisticRegression(C=1e5)
-    logistic.fit(noduleX, noduleY)
+    for model_type, model_class in MODEL_TYPES.items():
+        print 'Training model %s..' % model_type
+        model = model_class(C=1e5)
+        model.fit(noduleX, noduleY)
 
-    print 'logistic', logistic
+        print model
 
-    model_path = 'data/model.logistic.pkl'
-    with open(model_path, 'w') as data_f:
-        pickle.dump(logistic, data_f)
+        model_path = 'data/model.%s.pkl' % model_type
+        with open(model_path, 'w') as data_f:
+            pickle.dump(model, data_f)
 
-    print 'Saved model to %s.' % model_path
+        print 'Saved model to %s.' % model_path
 
 
 def test(model, languages):
