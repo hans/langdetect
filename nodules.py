@@ -3,7 +3,7 @@ import sys
 
 from recording import Recording, Segment, Nodule
 from collections import Counter, namedtuple
-from sklearn import linear_model, svm, preprocessing
+from sklearn import linear_model, svm, metrics, preprocessing
 
 # let noduleK be the number of segments each nodule takes in
 noduleK = 3
@@ -143,6 +143,27 @@ def train(languages):
         print 'Saved model to %s.' % model_path
 
 
+def evaluate(golds, guesses):
+    # # inputs as lists of 0s or 1s
+    # # return accuracy, precision, F1
+    # assert len(guesses) == len(golds)
+    # nLangs = 2 # could eventually increase this
+
+    return metrics.classification_report(golds, guesses)
+
+    # # build confusion matrix [guess][gold]
+    # confusionMat = [[0 for j in range(nLangs)] for i in range(nLangs)]
+    # for guess, gold in zip(guesses,golds):
+    #     confusionMat[guess][gold] += 1
+
+    # nCorrect = sum([confusionMat[i][i] for i in range(nLangs)])
+    # accuracy = nCorrect/float(len(guesses))
+
+    # return (confusionMat, accuracy) # returns a confusion matrix
+
+
+
+
 def test(model, languages):
     # Sort language labels so we know outputs are consistent among train, test
     languages.sort()
@@ -158,8 +179,6 @@ def test(model, languages):
             guess = classifyRecording(model, recording)[0]
 
             print 'guess', languages[guess], 'gold', lang
-
-
 
 if __name__ == '__main__':
     languages = ['ge', 'ma']
