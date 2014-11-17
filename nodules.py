@@ -1,3 +1,5 @@
+import argparse
+import ConfigParser
 import cPickle as pickle
 from functools import partial
 import sys
@@ -184,21 +186,64 @@ def test(model, languages):
             golds.append(langIndex)
             guesses.append(guess)
 
-            print 'guess', languages[guess], 'gold', lang
-
     print evaluate(golds, guesses)
 
 if __name__ == '__main__':
-    languages = ['ge', 'ma']
+    # Build an ArgumentParser just for matching config file arguments
+    conf_section = 'Main'
+    conf_parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter,
+        add_help=False)
+    conf_parser.add_argument('-c', '--config-file', metavar='FILE',
+                             help=('Path to configuration file, which '
+                                   'has keys which match possible '
+                                   'long-form argument names of the '
+                                   'program (see --help). Properties '
+                                   'should be under a section named '
+                                   '[%s].' % conf_section))
 
-    if len(sys.argv) > 1:
-        with open(sys.argv[1], 'r') as model_f:
+    # Try to grab just the config file param; leave rest untouched
+    args, remaining_argv = conf_parser.parse_known_args()
+
+    defaults = None
+    if args.config_file:
+        config = ConfigParser.SafeConfigParser()
+        config.read([args.config_file])
+        defaults = dict(config.items(conf_section))
+
+    # Parse rest of arguments
+    parser = argparse.ArgumentParser(parents=[conf_parser])
+    parser.add_argument('languages', type=lambda s: s.split(','),
+                        help=('Comma-separated list of first two '
+                              'letters of names of each language to '
+                              'retain'))
+
+    parser.add_argument('mode', choices=['train', 'test'],
+                        help=('Program mode. Different options apply to '
+                              'each mode -- see below.'))
+
+    parser.add_argument('-d', '--data-dir',
+                        help=('Directory containing preprocessed data '
+                              '(as output by `prepare` module)'))
+
+    model_options = parser.add_mutually_exclusive_group(required=True)
+    model_options.add_argument('--model-out-dir',
+                               help=('Directory to which model files '
+                                     'should be saved (training only)'))
+    model_options.add_argument('--model-in-file',
+                               help=('Trained model file to use for '
+                                     'testing'))
+
+    args = parser.parse_args(remaining_argv)
+
+    if args.mode == 'test':
+        with open(args.model_in_file, 'r') as model_f:
             model = pickle.load(model_f)
 
         # Model provided -- test.
-        test(model, languages)
+        test(model, args.languages)
     else:
-        train(languages)
+        train(args.languages)
 
 
 
