@@ -162,24 +162,9 @@ def train(languages):
 
 
 def evaluate(golds, guesses):
-    # # inputs as lists of 0s or 1s
-    # # return accuracy, precision, F1
-    # assert len(guesses) == len(golds)
-    # nLangs = 2 # could eventually increase this
+    # TODO build confusion matrix as well?
 
     return metrics.classification_report(golds, guesses)
-
-    # # build confusion matrix [guess][gold]
-    # confusionMat = [[0 for j in range(nLangs)] for i in range(nLangs)]
-    # for guess, gold in zip(guesses,golds):
-    #     confusionMat[guess][gold] += 1
-
-    # nCorrect = sum([confusionMat[i][i] for i in range(nLangs)])
-    # accuracy = nCorrect/float(len(guesses))
-
-    # return (confusionMat, accuracy) # returns a confusion matrix
-
-
 
 
 def test(model, languages):
