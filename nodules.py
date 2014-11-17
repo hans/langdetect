@@ -104,16 +104,14 @@ CLASSIFIER_TYPES = {
 }
 
 
-def train(languages):
-    # Sort language labels so we know outputs are consistent among train, test
-    languages.sort()
-
+def train(args):
     noduleKeys = None # we need to be consistent in how we order them for the classifier
     noduleX = [] # input nodule features
     noduleY = [] # output classifications
 
-    train_path = 'decoded/%s.train.pkl'
-    for langIndex, lang in enumerate(languages):
+    train_path = '%s/%%s.train.pkl' % args.data_dir
+
+    for langIndex, lang in enumerate(args.languages):
         with open(train_path % lang, 'r') as data_f:
             recordings = pickle.load(data_f)
         print 'unpickled',lang
@@ -144,7 +142,6 @@ def train(languages):
     print ('Normalizing all examples and all features (%i examples, %i features)..'
            % (len(noduleX), len(noduleX[0])))
     noduleX = preprocessing.Normalizer().fit_transform(noduleX)
-    print 'Now %i examples, %i features' % (len(noduleX), len(noduleX[0]))
 
     for classifier_name, classifier_class in CLASSIFIER_TYPES.items():
         print 'Training model %s on %i examples..' % (classifier_name, len(noduleX))
@@ -167,14 +164,11 @@ def evaluate(golds, guesses):
     return metrics.classification_report(golds, guesses)
 
 
-def test(model, languages):
-    # Sort language labels so we know outputs are consistent among train, test
-    languages.sort()
-
-    dev_path = 'decoded/%s.devtest.pkl'
+def test(model, args):
+    dev_path = '%s/%%s.devtest.pkl' % args.data_dir
 
     golds, guesses = [], []
-    for langIndex, lang in enumerate(languages):
+    for langIndex, lang in enumerate(model.languages):
         with open(dev_path % lang, 'r') as data_f:
             recordings = pickle.load(data_f)
 
@@ -248,9 +242,9 @@ if __name__ == '__main__':
             model = pickle.load(model_f)
 
         # Model provided -- test.
-        test(model, args.languages)
+        test(model, args)
     else:
-        train(args.languages)
+        train(args)
 
 
 
