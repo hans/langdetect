@@ -10,40 +10,53 @@ from recording import Recording, Segment, Nodule
 from collections import Counter, namedtuple
 
 
+class Model(object):
+    """Defines a language detection model (mostly for serialization
+    purposes)."""
+
+    def __init__(self, languages, classifier, nodule_features):
+        """TODO document"""
+
+        self.languages = languages
+
+        self.classifier = classifier
+        self.nodule_features = nodule_features
+
+
 # let noduleK be the number of segments each nodule takes in
 noduleK = 3
 
 def makeNodule(segments, prevNodule):
-    # Takes in noduleK features from consecutive segments
-    # currently, these don't talk to each other yet, i.e. we're ignoring prevFeatures
-    # for the future, we have to make sure we take care of the case where prevFeatures is None
+    """Create a new `Nodule` from the provided segments and given
+    nodule history."""
+
+    # TODO: remove assertion
     assert len(segments) == noduleK
 
     # TODO: after deadline, do a better job for when when prevNodules is None
     if prevNodule is None:
-        prevNodule = Nodule(features = Counter()) #i.e. assume everything is 0
+        # Build a dummy nodule with all features equal to zero.
+        prevNodule = Nodule(features = Counter())
 
     noduleFeatures = {}
     for featureKey in segments[0].features:
         featureValues = [segment.features[featureKey] for segment in segments]
 
-        # here go all the features
+        # Compute functionals over this feature for the segments
+        # assigned to this nodule
         noduleFeatures[('avg', featureKey)] = sum(featureValues) / float(noduleK)
         noduleFeatures[('delta', featureKey)] = featureValues[-1] - featureValues[1]
 
-        # insert features using prevFeatures
-        #print ('avg',featureKey) in prevNodule.features, prevNodule.features[('avg',featureKey)]
+        # Compute intertemporal (across-nodule) functionals for this
+        # feature
         noduleFeatures[('prev avg', featureKey)] = prevNodule.features[('avg',featureKey)]
 
     return Nodule(features=noduleFeatures)
 
 
 def classifyNodule(model, nodule):
-    # Extract features in the same order used during training
-    keys = sorted(nodule.features.keys())
-
-    example = [nodule.features[key] for key in keys]
-    return model.predict(example)[0]
+    example = [nodule.features[key] for key in model.nodule_features]
+    return model.classifier.predict(example)[0]
 
 
 def classifyRecording(model, recording):
@@ -85,7 +98,7 @@ def createNodules(recording):
     return noduleList
 
 
-MODEL_TYPES = {
+CLASSIFIER_TYPES = {
     'logistic': partial(linear_model.LogisticRegression, C=1e5),
     'svm': svm.SVC,
 }
@@ -133,15 +146,16 @@ def train(languages):
     noduleX = preprocessing.Normalizer().fit_transform(noduleX)
     print 'Now %i examples, %i features' % (len(noduleX), len(noduleX[0]))
 
-    for model_type, model_class in MODEL_TYPES.items():
-        print 'Training model %s on %i examples..' % (model_type, len(noduleX))
-        model = model_class()
-        model.fit(noduleX, noduleY)
+    for classifier_name, classifier_class in CLASSIFIER_TYPES.items():
+        print 'Training model %s on %i examples..' % (classifier_name, len(noduleX))
+        classifier = classifier_class()
+        classifier.fit(noduleX, noduleY)
 
-        print model
+        print '\t', classifier
 
-        model_path = 'data/model.%s.pkl' % model_type
+        model_path = 'data/model.%s.pkl' % classifier_name
         with open(model_path, 'w') as data_f:
+            model = Model(languages, classifier, noduleKeys)
             pickle.dump(model, data_f)
 
         print 'Saved model to %s.' % model_path
@@ -213,10 +227,6 @@ if __name__ == '__main__':
 
     # Parse rest of arguments
     parser = argparse.ArgumentParser(parents=[conf_parser])
-    parser.add_argument('languages', type=lambda s: s.split(','),
-                        help=('Comma-separated list of first two '
-                              'letters of names of each language to '
-                              'retain'))
 
     parser.add_argument('mode', choices=['train', 'test'],
                         help=('Program mode. Different options apply to '
@@ -234,7 +244,19 @@ if __name__ == '__main__':
                                help=('Trained model file to use for '
                                      'testing'))
 
+    train_options = parser.add_argument_group('Training options')
+    train_options.add_argument('-l', '--languages', type=lambda s: s.split(','),
+                               help=('Comma-separated list of first two '
+                                     'letters of names of each language '
+                                     'to retain'))
+
     args = parser.parse_args(remaining_argv)
+
+    # Validate arguments
+    if args.mode == 'train':
+        if args.languages is None:
+            raise ValueError('--languages option required for training '
+                             '(see --help)')
 
     if args.mode == 'test':
         with open(args.model_in_file, 'r') as model_f:
