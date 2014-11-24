@@ -27,12 +27,12 @@ class Model(object):
 # let noduleK be the number of segments each nodule takes in
 noduleK = 3
 
-def makeNodule(segments, prevNodule):
+def makeNodule(segments, prevNodule, args):
     """Create a new `Nodule` from the provided segments and given
     nodule history."""
 
     # TODO: remove assertion
-    assert len(segments) == noduleK
+    assert len(segments) == args.nodule_size
 
     # TODO: after deadline, do a better job for when when prevNodules is None
     if prevNodule is None:
@@ -75,23 +75,23 @@ def classifyRecording(model, recording):
     return votes.most_common(1)[0]
 
 
-def createNodules(recording):
+def createNodules(recording, args):
     # loop and create nodules (assume for now we're stepping one-by-one)
     recordingId, segments = recording
-    nNodules = len(segments) - noduleK + 1 #number of nodules
+    nNodules = len(segments) - args.nodule_size + 1 #number of nodules
 
     # Temporary fix: if can't form even a single nodule, repeat last segment
     # TODO: after milestone, find a better solution
     if nNodules <= 0:
-        while len(segments) != noduleK:
+        while len(segments) != args.nodule_size:
             segments.append(segments[-1])
 
-        return [makeNodule(segments, None)]
+        return [makeNodule(segments, None, args)]
 
     noduleList = []
     prevNodule = None
     for idx in range(nNodules):
-        nodule = makeNodule(segments[idx:idx + noduleK], prevNodule)
+        nodule = makeNodule(segments[idx:idx + noduleK], prevNodule, args)
         noduleList.append(nodule)
 
         prevNodule = nodule
@@ -112,6 +112,7 @@ def train(args):
 
     train_path = '%s/%%s.train.pkl' % args.data_dir
 
+    # Synthesize training examples
     for langIndex, lang in enumerate(args.languages):
         with open(train_path % lang, 'r') as data_f:
             recordings = pickle.load(data_f)
@@ -121,7 +122,7 @@ def train(args):
         # grouped by recording)
         nodules = []
         for recording in recordings:
-            nodules.extend(createNodules(recording))
+            nodules.extend(createNodules(recording, args))
 
         if noduleKeys == None and len(recordings) != 0:
             noduleKeys = sorted([key for key in nodules[0].features])
@@ -230,6 +231,9 @@ if __name__ == '__main__':
                                help=('Comma-separated list of first two '
                                      'letters of names of each language '
                                      'to retain'))
+    train_options.add_arugment('--nodule-size', type=int,
+                               help=('Number of segments which each '
+                                     'nodule should cover'))
 
     args = parser.parse_args(remaining_argv)
 
@@ -238,6 +242,8 @@ if __name__ == '__main__':
         if args.languages is None:
             raise ValueError('--languages option required for training '
                              '(see --help)')
+
+    ### Launch
 
     if args.mode == 'test':
         with open(args.model_in_file, 'r') as model_f:
