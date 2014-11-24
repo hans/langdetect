@@ -5,7 +5,7 @@ from functools import partial
 import sys
 import time
 
-from sklearn import linear_model, svm, metrics, preprocessing
+from sklearn import linear_model, svm, metrics, decomposition, preprocessing
 
 from recording import Recording, Segment, Nodule
 from collections import Counter, namedtuple
@@ -145,6 +145,12 @@ def train(args):
            % (len(noduleX), len(noduleX[0])))
     noduleX = preprocessing.Normalizer().fit_transform(noduleX)
 
+    if args.pca is not None:
+        print 'Using PCA to reduce data to %i components' % args.pca
+        pca = decomposition.PCA(n_components=args.pca, copy=False)
+        noduleX = pca.fit_transform(noduleX)
+        print 'Design matrix is now ', noduleX.shape
+
     for classifier_name, classifier_class in CLASSIFIER_TYPES.items():
         print 'Training model %s on %i examples..' % (classifier_name, len(noduleX))
         classifier = classifier_class()
@@ -231,6 +237,10 @@ if __name__ == '__main__':
                                help=('Comma-separated list of first two '
                                      'letters of names of each language '
                                      'to retain'))
+    train_options.add_argument('--pca', type=int,
+                               help=('Run PCA on training examples '
+                                     'before training, retaining `n` '
+                                     'components'))
     train_options.add_argument('--nodule-size', type=int, default=3,
                                help=('Number of segments which each '
                                      'nodule should cover'))
