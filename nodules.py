@@ -231,7 +231,7 @@ if __name__ == '__main__':
                                help=('Comma-separated list of first two '
                                      'letters of names of each language '
                                      'to retain'))
-    train_options.add_arugment('--nodule-size', type=int,
+    train_options.add_argument('--nodule-size', type=int,
                                help=('Number of segments which each '
                                      'nodule should cover'))
 
