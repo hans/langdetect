@@ -3,6 +3,7 @@ import ConfigParser
 import cPickle as pickle
 from functools import partial
 import sys
+import time
 
 from sklearn import linear_model, svm, metrics, preprocessing
 
@@ -150,7 +151,8 @@ def train(args):
 
         print '\t', classifier
 
-        model_path = 'data/model.%s.pkl' % classifier_name
+        model_path = 'data/model.%s.%s.pkl' % (classifier_name,
+                                               time.strftime('%Y%m%d-%H%M%S'))
         with open(model_path, 'w') as data_f:
             model = Model(languages, classifier, noduleKeys)
             pickle.dump(model, data_f)
