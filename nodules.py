@@ -129,7 +129,7 @@ def train(args):
     for langIndex, lang in enumerate(args.languages):
         with open(train_path % lang, 'r') as data_f:
             recordings = pickle.load(data_f)
-        print 'unpickled',lang
+        print('unpickled', lang)
 
         # Build training data: just a big collection of nodules (not
         # grouped by recording)
@@ -146,31 +146,31 @@ def train(args):
         noduleXNew = [[nodule.features[key] for key in noduleKeys]
                       for nodule in nodules]
 
-        #print noduleXNew[0]
+        #print(noduleXNew[0])
 
         noduleX.extend(noduleXNew)
 
         # Labels for this language
         noduleY.extend([langIndex] * len(noduleXNew))
 
-        print 'created nodules for', lang
+        print('created nodules for', lang)
 
-    print ('Normalizing all examples and all features (%i examples, %i features)..'
+    print('Normalizing all examples and all features (%i examples, %i features)..'
            % (len(noduleX), len(noduleX[0])))
     noduleX = preprocessing.Normalizer().fit_transform(noduleX)
 
     if args.pca is not None:
-        print 'Using PCA to reduce data to %i components' % args.pca
+        print('Using PCA to reduce data to %i components' % args.pca)
         pca = decomposition.PCA(n_components=args.pca, copy=False)
         noduleX = pca.fit_transform(noduleX)
-        print 'Design matrix is now ', noduleX.shape
+        print('Design matrix is now ', noduleX.shape)
 
     for classifier_name, classifier_class in CLASSIFIER_TYPES.items():
-        print 'Training model %s on %i examples..' % (classifier_name, len(noduleX))
+        print('Training model %s on %i examples..' % (classifier_name, len(noduleX)))
         classifier = classifier_class()
         classifier.fit(noduleX, noduleY)
 
-        print '\t', classifier
+        print('\t', classifier)
 
         model_path = 'data/model.%s.%s.pkl' % (classifier_name,
                                                time.strftime('%Y%m%d-%H%M%S'))
@@ -183,7 +183,7 @@ def train(args):
 
             pickle.dump(model, data_f)
 
-        print 'Saved model to %s.' % model_path
+        print('Saved model to %s.' % model_path)
 
 
 def evaluate(golds, guesses):
@@ -211,7 +211,7 @@ def test(model, args):
             golds.append(langIndex)
             guesses.append(guess)
 
-    print evaluate(golds, guesses)
+    print(evaluate(golds, guesses))
 
 if __name__ == '__main__':
     # Build an ArgumentParser just for matching config file arguments
