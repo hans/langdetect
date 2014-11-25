@@ -9,55 +9,66 @@ from sklearn import linear_model, svm, metrics, decomposition, preprocessing
 
 from recording import Recording, Segment, Nodule
 from collections import Counter, namedtuple
+import nodule_features
 
 
 class Model(object):
     """Defines a language detection model (mostly for serialization
     purposes)."""
 
-    def __init__(self, languages, classifier, nodule_features):
-        """TODO document"""
+    def __init__(self, languages, classifier, feature_extractors, nodule_keys):
+        """Create a model for saving / loading.
+
+        `feature_extractors` is a list of feature extractor functions as
+        defined in the `nodule_features` module.
+
+        `nodule_keys` is a list of keys to extract from the feature
+        dictionary and provide to the classifier. The order of this list
+        matches the order of features expected by the classifier."""
 
         self.languages = languages
 
         self.classifier = classifier
-        self.nodule_features = nodule_features
+
+        self.feature_extractors = feature_extractors
+        self.nodule_keys = nodule_keys
+
+    def classify_nodule(self, nodule):
+        # Extract proper keys from nodule
+        example = [nodule.features[key] for key in self.nodule_keys]
+        return self.classifier.predict(example)[0]
 
 
 # let noduleK be the number of segments each nodule takes in
 noduleK = 3
 
-def makeNodule(segments, prevNodule, args):
+def makeNodule(segments, prevNodule, feature_extractors, args):
     """Create a new `Nodule` from the provided segments and given
-    nodule history."""
+    nodule history.
+
+    `features` is a list of feature extractors (as defined in the
+    `nodule_features` module)."""
 
     # TODO: remove assertion
     assert len(segments) == args.nodule_size
 
+    # Build a more convenient structure for lookup: a map
+    #
+    #     fname -> [seg0[fname], seg1[fname], ...]
+    segments_by_feature = {key: [segment.features[key] for segment in segments]
+                           for key in segments[0].features}
+
     # TODO: after deadline, do a better job for when when prevNodules is None
     if prevNodule is None:
         # Build a dummy nodule with all features equal to zero.
-        prevNodule = Nodule(features = Counter())
+        prevNodule = Nodule(features=Counter())
 
     noduleFeatures = {}
-    for featureKey in segments[0].features:
-        featureValues = [segment.features[featureKey] for segment in segments]
 
-        # Compute functionals over this feature for the segments
-        # assigned to this nodule
-        noduleFeatures[('avg', featureKey)] = sum(featureValues) / float(noduleK)
-        noduleFeatures[('delta', featureKey)] = featureValues[-1] - featureValues[1]
-
-        # Compute intertemporal (across-nodule) functionals for this
-        # feature
-        noduleFeatures[('prev avg', featureKey)] = prevNodule.features[('avg',featureKey)]
+    for extractor in feature_extractors:
+        noduleFeatures.update(extractor(segments, segments_by_feature, prev_nodule))
 
     return Nodule(features=noduleFeatures)
-
-
-def classifyNodule(model, nodule):
-    example = [nodule.features[key] for key in model.nodule_features]
-    return model.classifier.predict(example)[0]
 
 
 def classifyRecording(model, recording):
@@ -69,13 +80,13 @@ def classifyRecording(model, recording):
 
     votes = Counter()
     for nodule in nodules:
-        noduleVote = classifyNodule(model, nodule)
+        noduleVote = model.classify_nodule(nodule)
         votes[noduleVote] += 1
 
     return votes.most_common(1)[0]
 
 
-def createNodules(recording, args):
+def createNodules(recording, feature_extractors, args):
     # loop and create nodules (assume for now we're stepping one-by-one)
     recordingId, segments = recording
     nNodules = len(segments) - args.nodule_size + 1 #number of nodules
@@ -86,12 +97,12 @@ def createNodules(recording, args):
         while len(segments) != args.nodule_size:
             segments.append(segments[-1])
 
-        return [makeNodule(segments, None, args)]
+        return [makeNodule(segments, None, feature_extractors, args)]
 
     noduleList = []
     prevNodule = None
     for idx in range(nNodules):
-        nodule = makeNodule(segments[idx:idx + noduleK], prevNodule, args)
+        nodule = makeNodule(segments[idx:idx + noduleK], prevNodule, feature_extractors, args)
         noduleList.append(nodule)
 
         prevNodule = nodule
@@ -112,6 +123,11 @@ def train(args):
 
     train_path = '%s/%%s.train.pkl' % args.data_dir
 
+    # TODO don't set in stone this configuration!
+    feature_extractors = [nodule_features.avg_segment_features,
+                          nodule_features.delta_segment_features,
+                          nodule_features.previous_average]
+
     # Synthesize training examples
     for langIndex, lang in enumerate(args.languages):
         with open(train_path % lang, 'r') as data_f:
@@ -122,7 +138,7 @@ def train(args):
         # grouped by recording)
         nodules = []
         for recording in recordings:
-            nodules.extend(createNodules(recording, args))
+            nodules.extend(createNodules(recording, feature_extractors, args))
 
         if noduleKeys == None and len(recordings) != 0:
             noduleKeys = sorted([key for key in nodules[0].features])
@@ -161,7 +177,7 @@ def train(args):
         model_path = 'data/model.%s.%s.pkl' % (classifier_name,
                                                time.strftime('%Y%m%d-%H%M%S'))
         with open(model_path, 'w') as data_f:
-            model = Model(languages, classifier, noduleKeys)
+            model = Model(languages, classifier, feature_extractors, noduleKeys)
             pickle.dump(model, data_f)
 
         print 'Saved model to %s.' % model_path
