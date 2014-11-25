@@ -191,9 +191,10 @@ def train(args):
 
 
 def evaluate(golds, guesses):
-    # TODO build confusion matrix as well?
+    confusion = metrics.confusion_matrix(golds, guesses)
+    report = metrics.classification_report(golds, guesses)
 
-    return metrics.classification_report(golds, guesses)
+    return "Confusion matrix:\n\n%s\n\n%s" % (confusion, report)
 
 
 def test(model, args):
