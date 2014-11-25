@@ -124,11 +124,6 @@ def train(args):
 
     train_path = '%s/%%s.train.pkl' % args.data_dir
 
-    # TODO don't set in stone this configuration!
-    feature_extractors = [nodule_features.avg_segment_features,
-                          nodule_features.delta_segment_features,
-                          nodule_features.previous_average]
-
     # Synthesize training examples
     for langIndex, lang in enumerate(args.languages):
         with open(train_path % lang, 'r') as data_f:
@@ -139,7 +134,7 @@ def train(args):
         # grouped by recording)
         nodules = []
         for recording in recordings:
-            nodules.extend(createNodules(recording, feature_extractors,
+            nodules.extend(createNodules(recording, args.feature_extractors,
                                          args.nodule_size))
 
         if noduleKeys == None and len(recordings) != 0:
@@ -182,7 +177,7 @@ def train(args):
             model = Model(languages=args.languages,
                           classifier=classifier,
                           nodule_size=args.nodule_size,
-                          feature_extractors=feature_extractors,
+                          feature_extractors=args.feature_extractors,
                           nodule_keys=noduleKeys)
 
             pickle.dump(model, data_f)
@@ -267,6 +262,13 @@ if __name__ == '__main__':
     train_options.add_argument('--nodule-size', type=int, default=3,
                                help=('Number of segments which each '
                                      'nodule should cover'))
+    train_options.add_argument('--feature-extractors',
+                               default=[nodule_features.avg_segment_features,
+                                        nodule_features.delta_segment_features,
+                                        nodule_features.previous_average],
+                               type=lambda fs_str: [getattr(nodule_features, f) for f in fs_str.split(',')],
+                               help=('Comma-separated list of feature '
+                                     'extractors to use'))
 
     args = parser.parse_args(remaining_argv)
 
