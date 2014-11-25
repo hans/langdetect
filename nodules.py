@@ -16,7 +16,8 @@ class Model(object):
     """Defines a language detection model (mostly for serialization
     purposes)."""
 
-    def __init__(self, languages, classifier, feature_extractors, nodule_keys):
+    def __init__(self, languages, classifier, nodule_size, feature_extractors,
+                 nodule_keys):
         """Create a model for saving / loading.
 
         `feature_extractors` is a list of feature extractor functions as
@@ -30,6 +31,7 @@ class Model(object):
 
         self.classifier = classifier
 
+        self.nodule_size = nodule_size
         self.feature_extractors = feature_extractors
         self.nodule_keys = nodule_keys
 
@@ -38,9 +40,6 @@ class Model(object):
         example = [nodule.features[key] for key in self.nodule_keys]
         return self.classifier.predict(example)[0]
 
-
-# let noduleK be the number of segments each nodule takes in
-noduleK = 3
 
 def makeNodule(segments, prev_nodule, feature_extractors, args):
     """Create a new `Nodule` from the provided segments and given
@@ -76,7 +75,8 @@ def classifyRecording(model, recording, args):
     Use a trained model to classify the given recording.
     """
 
-    nodules = createNodules(recording, model.feature_extractors, args)
+    nodules = createNodules(recording, model.feature_extractors,
+                            model.nodule_size)
 
     votes = Counter()
     for nodule in nodules:
@@ -86,15 +86,15 @@ def classifyRecording(model, recording, args):
     return votes.most_common(1)[0]
 
 
-def createNodules(recording, feature_extractors, args):
+def createNodules(recording, feature_extractors, nodule_size):
     # loop and create nodules (assume for now we're stepping one-by-one)
     recordingId, segments = recording
-    nNodules = len(segments) - args.nodule_size + 1 #number of nodules
+    nNodules = len(segments) - nodule_size + 1 #number of nodules
 
     # Temporary fix: if can't form even a single nodule, repeat last segment
     # TODO: after milestone, find a better solution
     if nNodules <= 0:
-        while len(segments) != args.nodule_size:
+        while len(segments) != nodule_size:
             segments.append(segments[-1])
 
         return [makeNodule(segments, None, feature_extractors, args)]
@@ -102,7 +102,8 @@ def createNodules(recording, feature_extractors, args):
     noduleList = []
     prevNodule = None
     for idx in range(nNodules):
-        nodule = makeNodule(segments[idx:idx + noduleK], prevNodule, feature_extractors, args)
+        nodule = makeNodule(segments[idx:idx + nodule_size], prevNodule,
+                            feature_extractors, nodule_size)
         noduleList.append(nodule)
 
         prevNodule = nodule
@@ -138,7 +139,8 @@ def train(args):
         # grouped by recording)
         nodules = []
         for recording in recordings:
-            nodules.extend(createNodules(recording, feature_extractors, args))
+            nodules.extend(createNodules(recording, feature_extractors,
+                                         args.nodule_size))
 
         if noduleKeys == None and len(recordings) != 0:
             noduleKeys = sorted([key for key in nodules[0].features])
@@ -177,7 +179,12 @@ def train(args):
         model_path = 'data/model.%s.%s.pkl' % (classifier_name,
                                                time.strftime('%Y%m%d-%H%M%S'))
         with open(model_path, 'w') as data_f:
-            model = Model(args.languages, classifier, feature_extractors, noduleKeys)
+            model = Model(languages=args.languages,
+                          classifier=classifier,
+                          nodule_size=args.nodule_size,
+                          feature_extractors=feature_extractors,
+                          nodule_keys=noduleKeys)
+
             pickle.dump(model, data_f)
 
         print 'Saved model to %s.' % model_path
