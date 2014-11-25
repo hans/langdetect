@@ -97,7 +97,7 @@ def createNodules(recording, feature_extractors, nodule_size):
         while len(segments) != nodule_size:
             segments.append(segments[-1])
 
-        return [makeNodule(segments, None, feature_extractors, args)]
+        return [makeNodule(segments, None, feature_extractors, nodule_size)]
 
     noduleList = []
     prevNodule = None
