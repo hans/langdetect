@@ -206,7 +206,7 @@ def test(model, args):
 
             if args.verbose:
                 result = 'RIGHT' if guess == langIndex else 'WRONG'
-                print('%s\t%s'.format(result, recording.id))
+                print('{}\t{}'.format(result, recording.id))
 
             golds.append(langIndex)
             guesses.append(guess)
