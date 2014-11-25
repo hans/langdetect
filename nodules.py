@@ -1,3 +1,4 @@
+from __future__ import print_function
 import argparse
 import ConfigParser
 import cPickle as pickle
@@ -203,6 +204,10 @@ def test(model, args):
         for recording in recordings:
             guess = classifyRecording(model, recording, args)[0]
 
+            if args.verbose:
+                result = 'RIGHT' if guess == langIndex else 'WRONG'
+                print('%s\t%s'.format(result, recording.id))
+
             golds.append(langIndex)
             guesses.append(guess)
 
@@ -241,6 +246,7 @@ if __name__ == '__main__':
     parser.add_argument('-d', '--data-dir',
                         help=('Directory containing preprocessed data '
                               '(as output by `prepare` module)'))
+    parser.add_argument('-v', '--verbose', action='store_true', default=False)
 
     model_options = parser.add_mutually_exclusive_group(required=True)
     model_options.add_argument('--model-out-dir',
