@@ -36,5 +36,5 @@ def delta_segment_features(segments, segments_by_feature, prev_nodule):
 def previous_average(segments, segments_by_feature, prev_nodule):
     """Assumes feature extractor `avg_segment_features` is enabled."""
 
-    return {('prev avg', key): prevNodule.features[('avg', key)]
+    return {('prev avg', key): prev_nodule.features[('avg', key)]
             for key in segments[0].features}

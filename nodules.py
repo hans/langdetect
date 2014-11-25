@@ -71,12 +71,12 @@ def makeNodule(segments, prev_nodule, feature_extractors, args):
     return Nodule(features=noduleFeatures)
 
 
-def classifyRecording(model, recording):
+def classifyRecording(model, recording, args):
     """
     Use a trained model to classify the given recording.
     """
 
-    nodules = createNodules(recording)
+    nodules = createNodules(recording, model.feature_extractors, args)
 
     votes = Counter()
     for nodule in nodules:
@@ -177,7 +177,7 @@ def train(args):
         model_path = 'data/model.%s.%s.pkl' % (classifier_name,
                                                time.strftime('%Y%m%d-%H%M%S'))
         with open(model_path, 'w') as data_f:
-            model = Model(languages, classifier, feature_extractors, noduleKeys)
+            model = Model(args.languages, classifier, feature_extractors, noduleKeys)
             pickle.dump(model, data_f)
 
         print 'Saved model to %s.' % model_path
@@ -198,8 +198,7 @@ def test(model, args):
             recordings = pickle.load(data_f)
 
         for recording in recordings:
-            nodules = createNodules(recording)
-            guess = classifyRecording(model, recording)[0]
+            guess = classifyRecording(model, recording, args)[0]
 
             golds.append(langIndex)
             guesses.append(guess)
