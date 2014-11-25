@@ -42,7 +42,7 @@ class Model(object):
 # let noduleK be the number of segments each nodule takes in
 noduleK = 3
 
-def makeNodule(segments, prevNodule, feature_extractors, args):
+def makeNodule(segments, prev_nodule, feature_extractors, args):
     """Create a new `Nodule` from the provided segments and given
     nodule history.
 
@@ -59,9 +59,9 @@ def makeNodule(segments, prevNodule, feature_extractors, args):
                            for key in segments[0].features}
 
     # TODO: after deadline, do a better job for when when prevNodules is None
-    if prevNodule is None:
+    if prev_nodule is None:
         # Build a dummy nodule with all features equal to zero.
-        prevNodule = Nodule(features=Counter())
+        prev_nodule = Nodule(features=Counter())
 
     noduleFeatures = {}
 
