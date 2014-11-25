@@ -41,7 +41,7 @@ class Model(object):
         return self.classifier.predict(example)[0]
 
 
-def makeNodule(segments, prev_nodule, feature_extractors, args):
+def makeNodule(segments, prev_nodule, feature_extractors, nodule_size):
     """Create a new `Nodule` from the provided segments and given
     nodule history.
 
@@ -49,7 +49,7 @@ def makeNodule(segments, prev_nodule, feature_extractors, args):
     `nodule_features` module)."""
 
     # TODO: remove assertion
-    assert len(segments) == args.nodule_size
+    assert len(segments) == nodule_size
 
     # Build a more convenient structure for lookup: a map
     #
