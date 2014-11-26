@@ -276,6 +276,7 @@ if __name__ == '__main__':
                                help=('Comma-separated list of feature '
                                      'extractors to use'))
 
+    parser.set_defaults(**defaults)
     args = parser.parse_args(remaining_argv)
 
     # Validate arguments
