@@ -6,6 +6,7 @@ from functools import partial
 import sys
 import time
 
+import numpy as np
 from sklearn import (# models
                      linear_model, svm,
                      # training utilities
@@ -41,10 +42,28 @@ class Model(object):
         self.feature_extractors = feature_extractors
         self.nodule_keys = nodule_keys
 
+    def _make_example(self, nodule):
+        return [nodule.features[key] for key in self.nodule_keys]
+
     def classify_nodule(self, nodule):
-        # Extract proper keys from nodule
-        example = [nodule.features[key] for key in self.nodule_keys]
-        return self.classifier.predict(example)[0]
+        return self.classifier.predict(self._make_example(nodule))[0]
+
+    def class_confidences(self, nodule):
+        """Return a list of confidences for each class given the nodule
+        data."""
+
+        confidences = self.classifier.decision_function(self._make_example(nodule))
+
+        # scikit-learn linear models do this weird thing for n_classes = 2
+        # where they return a single confidence score.. need to fix that
+        if len(confidences) == 1:
+            confidence = confidences[0]
+            if confidence > 0:
+                return np.array([0, confidence])
+            else:
+                return np.array([-confidence, 0])
+
+        return confidences
 
 
 def makeNodule(segments, prev_nodule, feature_extractors, nodule_size):
@@ -79,17 +98,21 @@ def makeNodule(segments, prev_nodule, feature_extractors, nodule_size):
 def classifyRecording(model, recording, args):
     """
     Use a trained model to classify the given recording.
+
+    Returns the index of the most likely language. (Index into
+    `model.languages`.)
     """
 
     nodules = createNodules(recording, model.feature_extractors,
                             model.nodule_size)
 
-    votes = Counter()
+    votes = np.zeros(len(model.languages))
     for nodule in nodules:
-        noduleVote = model.classify_nodule(nodule)
-        votes[noduleVote] += 1
+        # confidences of each class applying to the given nodule
+        lang_confidences = model.class_confidences(nodule)
+        votes += lang_confidences
 
-    return votes.most_common(1)[0]
+    return np.argmax(votes)
 
 
 def createNodules(recording, feature_extractors, nodule_size):
@@ -263,7 +286,7 @@ def test(model, args):
             recordings = pickle.load(data_f)
 
         for recording in recordings:
-            guess = classifyRecording(model, recording, args)[0]
+            guess = classifyRecording(model, recording, args)
 
             if args.verbose:
                 result = 'RIGHT' if guess == langIndex else 'WRONG'
