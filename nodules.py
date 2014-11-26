@@ -123,7 +123,7 @@ CLASSIFIER_TYPES = {
 }
 
 
-def train(args, grid_search=False):
+def train(args, do_grid_search=False):
     noduleKeys = None # we need to be consistent in how we order them for the classifier
     noduleX = [] # input nodule features
     noduleY = [] # output classifications
@@ -170,7 +170,7 @@ def train(args, grid_search=False):
         noduleX = pca.fit_transform(noduleX)
         print('Design matrix is now ', noduleX.shape)
 
-    if grid_search:
+    if do_grid_search:
         print('Performing grid search on logistic regression '
               'regularization parameter')
 
