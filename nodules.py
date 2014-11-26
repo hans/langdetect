@@ -108,9 +108,13 @@ def classifyRecording(model, recording, args):
 
     votes = np.zeros(len(model.languages))
     for nodule in nodules:
-        # confidences of each class applying to the given nodule
-        lang_confidences = model.class_confidences(nodule)
-        votes += lang_confidences
+        if args.soft_votes:
+            # confidences of each class applying to the given nodule
+            lang_confidences = model.class_confidences(nodule)
+            votes += lang_confidences
+        else:
+            decision = model.classify_nodule(nodule)
+            votes[decision] += 1
 
     return np.argmax(votes)
 
@@ -330,6 +334,9 @@ if __name__ == '__main__':
                         help=('Directory containing preprocessed data '
                               '(as output by `prepare` module)'))
     parser.add_argument('-v', '--verbose', action='store_true', default=False)
+    parser.add_argument('--soft-votes', default=False, action='store_true',
+                        help=('Aggregate "soft votes" (confidences) per '
+                              'nodule'))
 
     model_options = parser.add_mutually_exclusive_group(required=True)
     model_options.add_argument('--model-out-dir',
