@@ -24,6 +24,9 @@ def parse_args():
                         help=('Comma-separated lest of first two letters '
                               'of names of each language to retain'))
 
+    parser.add_argument('-s', '--segment-length', type=int, default=2,
+                        help='Audio segment length')
+
     parser.add_argument('-o', '--output-directory', default='prepared',
                         help=('Directory to which prepared files should be '
                               'output'))
@@ -154,7 +157,7 @@ def process_recording(recording_id, args):
     wav_path = get_data_file(recording_id, 'calls', args.ogi_dir)
 
     decoded_path = decode_call_file(wav_path)
-    segment_paths = split_call_file(decoded_path)
+    segment_paths = split_call_file(decoded_path, args.segment_length)
 
     segments = []
     for segment_path in segment_paths:
