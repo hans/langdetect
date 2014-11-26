@@ -6,7 +6,12 @@ from functools import partial
 import sys
 import time
 
-from sklearn import linear_model, svm, metrics, decomposition, preprocessing
+from sklearn import (# models
+                     linear_model, svm,
+                     # training utilities
+                     metrics, cross_validation, grid_search,
+                     # preprocessing
+                     decomposition, preprocessing)
 
 from recording import Recording, Segment, Nodule
 from collections import Counter, namedtuple
@@ -118,7 +123,7 @@ CLASSIFIER_TYPES = {
 }
 
 
-def train(args):
+def train(args, grid_search=False):
     noduleKeys = None # we need to be consistent in how we order them for the classifier
     noduleX = [] # input nodule features
     noduleY = [] # output classifications
@@ -165,6 +170,27 @@ def train(args):
         noduleX = pca.fit_transform(noduleX)
         print('Design matrix is now ', noduleX.shape)
 
+    if grid_search:
+        print('Performing grid search on logistic regression '
+              'regularization parameter')
+
+        classifier = grid_search(noduleX, noduleY)
+        model_path = ('data/model.logistic.gridsearch.%s.pkl'
+                      % time.strftime('%Y%m%d-%H%M%S'))
+
+        with open(model_path, 'w') as model_f:
+            model = Model(languages=args.languages,
+                          classifier=classifier,
+                          nodule_size=args.nodule_size,
+                          feature_extractors=args.feature_extractors,
+                          nodule_keys=noduleKeys)
+
+            pickle.dump(model, model_f)
+
+        print('Saved grid-search model to %s.' % model_path)
+        return
+
+
     for classifier_name, classifier_class in CLASSIFIER_TYPES.items():
         print('Training model %s on %i examples..' % (classifier_name, len(noduleX)))
         classifier = classifier_class()
@@ -184,6 +210,41 @@ def train(args):
             pickle.dump(model, data_f)
 
         print('Saved model to %s.' % model_path)
+
+
+def logistic_grid_search(X, y, cross_validation_proportion=0.25):
+    """Perform grid search to find the best regularization parameter
+    for the given data.
+
+    Will partition the data and train on one split, cross-validate on
+    other. (The data provided should be drawn exclusively from a
+    training set.) `cross_validation_proportion` specifies the
+    proportion of the provided data which should be held out for
+    cross-validation.
+
+    Returns the optimal logistic regression classifier.
+    """
+
+    X_train, X_val, y_train, y_val = cross_validation.train_test_split(
+        X, y, test_size=cross_validation_proportion)
+
+    parameters = {'C': [0.1, 1, 10, 100, 1000, 10000]}
+    classifier = grid_search.GridSearchCV(linear_model.LogisticRegression(C=1),
+                                          parameters)
+    classifier.fit(X_val, y_val)
+
+    print("Best parameters found on validation set:\n%s", classifier.best_estimator_)
+    print("Grid scores:\n%s", classifier.grid_scores_)
+
+    y_pred = classifier.predict(y_val)
+    print("Classification report for classifier trained on validation set:")
+    print(evaluate(y_val, y_pred))
+
+    print("Now retraining on training set.")
+    classifier = classifier.best_estimator_.fit(X_train, y_train)
+    print('\t', classifier)
+
+    return classifier
 
 
 def evaluate(golds, guesses):
@@ -239,9 +300,8 @@ if __name__ == '__main__':
     # Parse rest of arguments
     parser = argparse.ArgumentParser(parents=[conf_parser])
 
-    parser.add_argument('mode', choices=['train', 'test'],
-                        help=('Program mode. Different options apply to '
-                              'each mode -- see below.'))
+    parser.add_argument('mode', choices=['train', 'test', 'grid_search'],
+                        help=('Program mode.'))
 
     parser.add_argument('-d', '--data-dir',
                         help=('Directory containing preprocessed data '
@@ -282,7 +342,7 @@ if __name__ == '__main__':
     args = parser.parse_args(remaining_argv)
 
     # Validate arguments
-    if args.mode == 'train':
+    if args.mode in ['train', 'grid_search']:
         if args.languages is None:
             raise ValueError('--languages option required for training '
                              '(see --help)')
@@ -296,7 +356,7 @@ if __name__ == '__main__':
         # Model provided -- test.
         test(model, args)
     else:
-        train(args)
+        train(args, args.mode == 'grid_search')
 
 
 
