@@ -206,7 +206,8 @@ def split_call_file(call_path, split_size=2):
 
     new_path = add_suffix(call_path, 'split')
 
-    sox_params = 'trim 0 2 : newfile : restart'.split()
+    sox_params_str = 'trim 0 %i : newfile : restart' % split_size
+    sox_params = sox_params_str.split()
     retval = subprocess.call(['sox', call_path, new_path] + sox_params)
     if retval != 0:
         raise RuntimeError("sox error: retval %i" % retval)
