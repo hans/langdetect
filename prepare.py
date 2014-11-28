@@ -256,7 +256,7 @@ def split_call_file(call_path, split_size=2, drop_short_segments=False):
 
         return good_files
 
-    return files
+    return seg_paths
 
 
 def extract_audio_features(audio_path, args):
