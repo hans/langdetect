@@ -136,6 +136,10 @@ def createNodules(recording, feature_extractors, nodule_size):
     # Temporary fix: if can't form even a single nodule, repeat last segment
     # TODO: after milestone, find a better solution
     if nNodules <= 0:
+        if len(segments) == 0:
+            # Really in trouble now.
+            return []
+
         while len(segments) != nodule_size:
             segments.append(segments[-1])
 
