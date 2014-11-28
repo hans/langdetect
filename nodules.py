@@ -197,7 +197,7 @@ def train(args, do_grid_search=False):
     print('Normalizing all examples and all features (%i examples, %i features)..'
           % (len(noduleX), len(noduleX[0])))
     scaler = preprocessing.StandardScaler().fit(noduleX)
-    noduleX = normalizer.transform(noduleX)
+    noduleX = scaler.transform(noduleX)
 
     transformers = [scaler]
 
