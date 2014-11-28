@@ -27,6 +27,10 @@ def parse_args():
     parser.add_argument('-s', '--segment-length', type=int, default=2,
                         help='Audio segment length')
 
+    parser.add_argument('--gain-level', default=None, type=float,
+                        help=('Decibel level for normalizing sound '
+                              'clips'))
+
     parser.add_argument('-o', '--output-directory', default='prepared',
                         help=('Directory to which prepared files should be '
                               'output'))
@@ -157,6 +161,9 @@ def process_recording(recording_id, args):
     wav_path = get_data_file(recording_id, 'calls', args.ogi_dir)
 
     decoded_path = decode_call_file(wav_path)
+    if args.gain_level is not None:
+        decoded_path = normalize_call_file(decoded_path, args.gain_level)
+
     segment_paths = split_call_file(decoded_path, args.segment_length)
 
     segments = []
@@ -197,6 +204,19 @@ def decode_call_file(call_path):
     return decoded_path
 
 
+def normalize_call_file(call_path, gain_level=-3):
+    """Normalize the audio level in the given call file."""
+
+    new_path = add_suffix(call_path, 'norm')
+
+    retval = subprocess.call(['sox', call_path, new_path,
+                              'gain', '-n', str(gain_level)])
+    if retval != 0:
+        raise RuntimeError("sox error (normalization): retval %i" % retval)
+
+    return new_path
+
+
 def split_call_file(call_path, split_size=2):
     """
     Split the given call audio file into equally-sized segments. Returns
@@ -210,7 +230,7 @@ def split_call_file(call_path, split_size=2):
     sox_params = sox_params_str.split()
     retval = subprocess.call(['sox', call_path, new_path] + sox_params)
     if retval != 0:
-        raise RuntimeError("sox error: retval %i" % retval)
+        raise RuntimeError("sox error (splitting): retval %i" % retval)
 
     # TODO remove segments which are empty / short?
 
