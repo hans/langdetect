@@ -24,7 +24,7 @@ class Model(object):
     purposes)."""
 
     def __init__(self, languages, classifier, nodule_size, feature_extractors,
-                 nodule_keys):
+                 nodule_keys, transformers=None):
         """Create a model for saving / loading.
 
         `feature_extractors` is a list of feature extractor functions as
@@ -42,8 +42,19 @@ class Model(object):
         self.feature_extractors = feature_extractors
         self.nodule_keys = nodule_keys
 
+        # Backward-compatible: default transformer = normalization
+        if transformers = None:
+            self.transformers = [preprocessing.Normalizer()]
+        else:
+            self.transformers = transformers
+
     def _make_example(self, nodule):
-        return [nodule.features[key] for key in self.nodule_keys]
+        data = [nodule.features[key] for key in self.nodule_keys]
+
+        for transformer in self.transformers:
+            data = transformer.transform(data)
+
+        return data
 
     def classify_nodule(self, nodule):
         return self.classifier.predict(self._make_example(nodule))[0]
@@ -188,14 +199,19 @@ def train(args, do_grid_search=False):
         print('created nodules for', lang)
 
     print('Normalizing all examples and all features (%i examples, %i features)..'
-           % (len(noduleX), len(noduleX[0])))
-    noduleX = preprocessing.Normalizer().fit_transform(noduleX)
+          % (len(noduleX), len(noduleX[0])))
+    normalizer = preprocessing.Normalizer().fit(noduleX)
+    noduleX = normalizer.transform(noduleX)
+
+    transformers [normalizer]
 
     if args.pca is not None:
         print('Using PCA to reduce data to %i components' % args.pca)
         pca = decomposition.PCA(n_components=args.pca, copy=False)
         noduleX = pca.fit_transform(noduleX)
         print('Design matrix is now ', noduleX.shape)
+
+        transformers.append(pca)
 
     if do_grid_search:
         print('Performing grid search on logistic regression '
@@ -210,7 +226,8 @@ def train(args, do_grid_search=False):
                           classifier=classifier,
                           nodule_size=args.nodule_size,
                           feature_extractors=args.feature_extractors,
-                          nodule_keys=noduleKeys)
+                          nodule_keys=noduleKeys,
+                          transformers=transformers)
 
             pickle.dump(model, model_f)
 
@@ -232,7 +249,8 @@ def train(args, do_grid_search=False):
                           classifier=classifier,
                           nodule_size=args.nodule_size,
                           feature_extractors=args.feature_extractors,
-                          nodule_keys=noduleKeys)
+                          nodule_keys=noduleKeys,
+                          transformers=transformers)
 
             pickle.dump(model, data_f)
 
