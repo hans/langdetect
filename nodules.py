@@ -43,7 +43,7 @@ class Model(object):
         self.nodule_keys = nodule_keys
 
         # Backward-compatible: default transformer = normalization
-        if transformers = None:
+        if transformers is None:
             self.transformers = [preprocessing.Normalizer()]
         else:
             self.transformers = transformers
