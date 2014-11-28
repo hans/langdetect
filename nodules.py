@@ -47,8 +47,10 @@ class Model(object):
     def _make_example(self, nodule):
         data = [nodule.features[key] for key in self.nodule_keys]
 
-        for transformer in self.transformers:
-            data = transformer.transform(data)
+        # Backwards-compatible with old code (pre-transformers)
+        if hasattr(self, 'transformers'):
+            for transformer in self.transformers:
+                data = transformer.transform(data)
 
         return data
 
