@@ -217,7 +217,7 @@ def train(args, do_grid_search=False):
         print('Performing grid search on logistic regression '
               'regularization parameter')
 
-        classifier = grid_search(noduleX, noduleY)
+        classifier = logistic_grid_search(noduleX, noduleY)
         model_path = ('data/model.logistic.gridsearch.%s.pkl'
                       % time.strftime('%Y%m%d-%H%M%S'))
 
@@ -281,7 +281,7 @@ def logistic_grid_search(X, y, cross_validation_proportion=0.25):
     print("Best parameters found on validation set:\n%s", classifier.best_estimator_)
     print("Grid scores:\n%s", classifier.grid_scores_)
 
-    y_pred = classifier.predict(y_val)
+    y_pred = classifier.predict(X_val)
     print("Classification report for classifier trained on validation set:")
     print(evaluate(y_val, y_pred))
 
