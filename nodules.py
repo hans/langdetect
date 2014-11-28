@@ -166,7 +166,7 @@ def train(args, do_grid_search=False):
 
     # Synthesize training examples
     for langIndex, lang in enumerate(args.languages):
-        with open(train_path % lang, 'r') as data_f:
+        with open(train_path % lang, 'rb') as data_f:
             recordings = pickle.load(data_f)
         print('unpickled', lang)
 
@@ -217,7 +217,7 @@ def train(args, do_grid_search=False):
         model_path = ('data/model.logistic.gridsearch.%s.pkl'
                       % time.strftime('%Y%m%d-%H%M%S'))
 
-        with open(model_path, 'w') as model_f:
+        with open(model_path, 'wb') as model_f:
             model = Model(languages=args.languages,
                           classifier=classifier,
                           nodule_size=args.nodule_size,
@@ -240,7 +240,7 @@ def train(args, do_grid_search=False):
 
         model_path = 'data/model.%s.%s.pkl' % (classifier_name,
                                                time.strftime('%Y%m%d-%H%M%S'))
-        with open(model_path, 'w') as data_f:
+        with open(model_path, 'wb') as data_f:
             model = Model(languages=args.languages,
                           classifier=classifier,
                           nodule_size=args.nodule_size,
@@ -300,7 +300,7 @@ def test(model, args):
 
     golds, guesses = [], []
     for langIndex, lang in enumerate(model.languages):
-        with open(dev_path % lang, 'r') as data_f:
+        with open(dev_path % lang, 'rb') as data_f:
             recordings = pickle.load(data_f)
 
         for recording in recordings:
@@ -394,7 +394,7 @@ if __name__ == '__main__':
     ### Launch
 
     if args.mode == 'test':
-        with open(args.model_in_file, 'r') as model_f:
+        with open(args.model_in_file, 'rb') as model_f:
             model = pickle.load(model_f)
 
         # Model provided -- test.

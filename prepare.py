@@ -331,7 +331,7 @@ if __name__ == '__main__':
 
             out_path = os.path.join(args.output_directory,
                                     '%s.%s.pkl' % (language, split))
-            with open(out_path, 'w') as out_f:
+            with open(out_path, 'wb') as out_f:
                 pickle.dump(recordings, out_f)
 
             logging.info('Wrote data for language %s, split %s to %s'
