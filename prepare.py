@@ -26,6 +26,9 @@ def parse_args():
 
     parser.add_argument('-s', '--segment-length', type=int, default=2,
                         help='Audio segment length')
+    parser.add_argument('--drop-short-segments', default=False, action='store_true',
+                        help=('Drop segments which are shorter than '
+                              'the provided segment length'))
 
     parser.add_argument('--gain-level', default=None, type=float,
                         help=('Decibel level for normalizing sound '
@@ -164,7 +167,8 @@ def process_recording(recording_id, args):
     if args.gain_level is not None:
         decoded_path = normalize_call_file(decoded_path, args.gain_level)
 
-    segment_paths = split_call_file(decoded_path, args.segment_length)
+    segment_paths = split_call_file(decoded_path, args.segment_length,
+                                    args.drop_short_segments)
 
     segments = []
     for segment_path in segment_paths:
@@ -217,7 +221,7 @@ def normalize_call_file(call_path, gain_level=-3):
     return new_path
 
 
-def split_call_file(call_path, split_size=2):
+def split_call_file(call_path, split_size=2, drop_short_segments=False):
     """
     Split the given call audio file into equally-sized segments. Returns
     a list of paths to the resultant segments (which are placed in the
@@ -232,14 +236,27 @@ def split_call_file(call_path, split_size=2):
     if retval != 0:
         raise RuntimeError("sox error (splitting): retval %i" % retval)
 
-    # TODO remove segments which are empty / short?
-
     # Filename prefix of segment files
     split_prefix = os.path.basename(call_path).rsplit('.', 1)[0] + '.split'
     call_dir = os.path.dirname(call_path)
-    return [os.path.join(call_dir, filename)
-            for filename in os.listdir(call_dir)
-            if filename.startswith(split_prefix)]
+    seg_paths = [os.path.join(call_dir, filename)
+                 for filename in os.listdir(call_dir)
+                 if filename.startswith(split_prefix)]
+
+    if args.drop_short_segments:
+        good_files = []
+        for seg_path in seg_paths:
+            seg_length = float(subprocess.check_output(['soxi', '-D', seg_path]))
+
+            if seg_length < split_size:
+                logging.warn("Removing short (%fs) segment %s.", seg_length, seg_path)
+                os.unlink(seg_path)
+            else:
+                good_files.append(seg_path)
+
+        return good_files
+
+    return files
 
 
 def extract_audio_features(audio_path, args):
