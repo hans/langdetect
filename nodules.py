@@ -47,15 +47,8 @@ class Model(object):
     def _make_example(self, nodule):
         data = [nodule.features[key] for key in self.nodule_keys]
 
-        # Backward-compatible: default transformer = normalization
-        if not hasattr(self, 'transformers'):
-            self.transformers = [preprocessing.Normalizer()]
-
         for transformer in self.transformers:
-            if isinstance(transformer, preprocessing.Normalizer):
-                data = transformer.fit_transform(data)
-            else:
-                data = transformer.transform(data)
+            data = transformer.transform(data)
 
         return data
 
@@ -206,7 +199,7 @@ def train(args, do_grid_search=False):
     normalizer = preprocessing.Normalizer().fit(noduleX)
     noduleX = normalizer.transform(noduleX)
 
-    transformers [normalizer]
+    transformers = [normalizer]
 
     if args.pca is not None:
         print('Using PCA to reduce data to %i components' % args.pca)
