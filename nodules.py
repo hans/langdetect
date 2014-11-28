@@ -196,10 +196,10 @@ def train(args, do_grid_search=False):
 
     print('Normalizing all examples and all features (%i examples, %i features)..'
           % (len(noduleX), len(noduleX[0])))
-    normalizer = preprocessing.Normalizer().fit(noduleX)
+    scaler = preprocessing.StandardScaler().fit(noduleX)
     noduleX = normalizer.transform(noduleX)
 
-    transformers = [normalizer]
+    transformers = [scaler]
 
     if args.pca is not None:
         print('Using PCA to reduce data to %i components' % args.pca)
