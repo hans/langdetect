@@ -24,7 +24,7 @@ class Model(object):
     purposes)."""
 
     def __init__(self, languages, classifier, nodule_size, feature_extractors,
-                 nodule_keys, transformers=None):
+                 nodule_keys, transformers):
         """Create a model for saving / loading.
 
         `feature_extractors` is a list of feature extractor functions as
@@ -42,14 +42,14 @@ class Model(object):
         self.feature_extractors = feature_extractors
         self.nodule_keys = nodule_keys
 
-        # Backward-compatible: default transformer = normalization
-        if transformers is None:
-            self.transformers = [preprocessing.Normalizer()]
-        else:
-            self.transformers = transformers
+        self.transformers = transformers
 
     def _make_example(self, nodule):
         data = [nodule.features[key] for key in self.nodule_keys]
+
+        # Backward-compatible: default transformer = normalization
+        if not hasattr(self, 'transformers'):
+            self.transformers = [preprocessing.Normalizer()]
 
         for transformer in self.transformers:
             data = transformer.transform(data)
