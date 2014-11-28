@@ -52,7 +52,10 @@ class Model(object):
             self.transformers = [preprocessing.Normalizer()]
 
         for transformer in self.transformers:
-            data = transformer.transform(data)
+            if isinstance(transformer, preprocessing.Normalizer):
+                data = transformer.fit_transform(data)
+            else:
+                data = transformer.transform(data)
 
         return data
 
