@@ -3,6 +3,7 @@ import argparse
 import ConfigParser
 import cPickle as pickle
 from functools import partial
+import random
 import sys
 import time
 
@@ -244,8 +245,9 @@ def train(args, do_grid_search=False):
 
         print('\t', classifier)
 
-        model_path = 'data/model.%s.%s.pkl' % (classifier_name,
-                                               time.strftime('%Y%m%d-%H%M%S'))
+        model_path = 'data/model.%s.%s%s.pkl' % (classifier_name,
+                                                 time.strftime('%Y%m%d-%H%M%S'),
+                                                 random.randint(0, 1000))
         with open(model_path, 'wb') as data_f:
             model = Model(languages=args.languages,
                           classifier=classifier,
