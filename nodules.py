@@ -250,15 +250,15 @@ def train(args, do_grid_search=False):
                                                classifier_name,
                                                time.strftime('%Y%m%d-%H%M%S'),
                                                random.randint(0, 1000))
-        with open(model_path, 'wb') as data_f:
-            model = Model(languages=args.languages,
-                          classifier=classifier,
-                          nodule_size=args.nodule_size,
-                          feature_extractors=args.feature_extractors,
-                          nodule_keys=noduleKeys,
-                          transformers=transformers)
 
-            joblib.dump(model, data_f)
+        model = Model(languages=args.languages,
+                      classifier=classifier,
+                      nodule_size=args.nodule_size,
+                      feature_extractors=args.feature_extractors,
+                      nodule_keys=noduleKeys,
+                      transformers=transformers)
+
+        joblib.dump(model, model_path)
 
         print('Saved model to %s.' % model_path)
 
@@ -404,10 +404,10 @@ if __name__ == '__main__':
     ### Launch
 
     if args.mode == 'test':
-        with open(args.model_in_file, 'rb') as model_f:
-            if args.model_in_file.endswith('jbl'):
-                model = joblib.load(model_f)
-            else:
+        if args.model_in_file.endswith('jbl'):
+            model = joblib.load(args.model_in_file)
+        else:
+            with open(args.model_in_file, 'rb') as model_f:
                 model = pickle.load(model_f)
 
         # Model provided -- test.
