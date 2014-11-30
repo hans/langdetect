@@ -14,7 +14,7 @@ from tempfile import NamedTemporaryFile
 
 from recording import Recording, Segment
 
-from sklearn.cross_validation import train_test_split # or something like this
+from sklearn.cross_validation import train_test_split
 
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 
@@ -70,7 +70,7 @@ def parse_args():
 # need to create splits (randomly)
 
 # This is the equivalent of `load_split_data` for OGI
-def get_filenames(splits, cslu_dir, languages):
+def get_filenames(splits, split_sizes, cslu_dir, languages):
     """
     Load a list of recording identifiers for the given dataset split
     from the provided OGI directory, grouped by language. Return value
@@ -84,33 +84,52 @@ def get_filenames(splits, cslu_dir, languages):
     where the keys of the map are OGI languages and the values
     correspond to individual recordings.
     """
+    assert len(splits) == len(split_sizes)
+    assert len(splits) == 3 # this constraint can be relaxed later
 
-    ret = defaultdict(list)
+    def good_recording(folder, filename):
+        file_size = os.path.getsize(os.path.join(folder, filename))
+        # TODO: extra feature (from flag) to use particular fluency levels
+        return file_size > 1e5
+
+    
+    def split_in_three(good_recs):
+        sizes = split_sizes
+        train, test = train_test_split(good_recs, train_size=1.0*sizes[0])
+        devtest, evaltest = train_test_split(test, train_size=1.0*sizes[1]/(sizes[1] + sizes[2]))
+        return (train, devtest, evaltest)
+
+    ret = {split:{} for split in splits}
 
     # Find a matching language
     for language in languages:
         lang_path = os.path.join(cslu_dir, 'speech', language.upper())
-        # TODO: finish
-        # use get train_test_split
-        
+        good_recs = [os.path.splitext(rec)[0] # cut off ".wav"
+                     for rec in os.listdir(lang_path) if good_recording(lang_path, rec)]
+        split_recs = split_in_three(good_recs)
+        for i,split in enumerate(splits):
+            ret[split][language] = split_recs[i]
 
-    # Load split data file
-    split_path = os.path.join(cslu_dir, 'trn_test', split_name + '.lst')
-    with open(split_path, 'r') as split_entries_f:
-        split_entries = []
-        for split_line in split_entries_f:
-            data = split_line.split()
+            
+    return ret
 
-            # Find a matching language (field in data[1] stores unique
-            # ID, beginning with recording language)
-            for language in languages:
-                if data[1].startswith(language):
-                    # Matching language. Extract all recordings
-                    recording_names = data[2:len(data) - 2]
-                    ret[language].extend([data[1] + recording
-                                          for recording in recording_names])
+    # # Load split data file
+    # split_path = os.path.join(cslu_dir, 'trn_test', split_name + '.lst')
+    # with open(split_path, 'r') as split_entries_f:
+    #     split_entries = []
+    #     for split_line in split_entries_f:
+    #         data = split_line.split()
 
-    return dict(ret)
+    #         # Find a matching language (field in data[1] stores unique
+    #         # ID, beginning with recording language)
+    #         for language in languages:
+    #             if data[1].startswith(language):
+    #                 # Matching language. Extract all recordings
+    #                 recording_names = data[2:len(data) - 2]
+    #                 ret[language].extend([data[1] + recording
+    #                                       for recording in recording_names])
+
+    # return dict(ret)
 
 
 # Expected file extensions associated with each section of the corpus
@@ -141,7 +160,7 @@ def get_data_file(recording_id, data_type, cslu_dir):
 
     # Match language key with full language name (why do they have to
     # lay it out this way??)
-    language_key = recording_id[:2]
+    language_key = recording_id[1:3] # e.g. FGE00010
     language = None
     for language_opt in os.listdir(type_path):
         if language_opt.startswith(language_key):
@@ -338,8 +357,9 @@ if __name__ == '__main__':
     args = parse_args()
 
     splits = ['train', 'devtest', 'evaltest']
+    split_sizes = [.6, .2, .2] # exact numbers up for debate
 
-    filenames = get_filenames(splits, args.cslu_dir, args.languages)
+    filenames = get_filenames(splits, split_sizes, args.cslu_dir, args.languages)
     # filenames = {split: load_split_data(split, args.cslu_dir, args.languages)
     #              for split in splits}
 
