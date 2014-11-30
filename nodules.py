@@ -246,9 +246,10 @@ def train(args, do_grid_search=False):
 
         print('\t', classifier)
 
-        model_path = 'data/model.%s.%s%s.jbl' % (classifier_name,
-                                                 time.strftime('%Y%m%d-%H%M%S'),
-                                                 random.randint(0, 1000))
+        model_path = '%s/model.%s.%s%s.jbl' % (args.model_out_dir,
+                                               classifier_name,
+                                               time.strftime('%Y%m%d-%H%M%S'),
+                                               random.randint(0, 1000))
         with open(model_path, 'wb') as data_f:
             model = Model(languages=args.languages,
                           classifier=classifier,
