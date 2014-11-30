@@ -14,6 +14,7 @@ from sklearn import (# models
                      metrics, cross_validation, grid_search,
                      # preprocessing
                      decomposition, preprocessing)
+from sklearn.externals import joblib
 
 from recording import Recording, Segment, Nodule
 from collections import Counter, namedtuple
@@ -245,7 +246,7 @@ def train(args, do_grid_search=False):
 
         print('\t', classifier)
 
-        model_path = 'data/model.%s.%s%s.pkl' % (classifier_name,
+        model_path = 'data/model.%s.%s%s.jbl' % (classifier_name,
                                                  time.strftime('%Y%m%d-%H%M%S'),
                                                  random.randint(0, 1000))
         with open(model_path, 'wb') as data_f:
@@ -256,7 +257,7 @@ def train(args, do_grid_search=False):
                           nodule_keys=noduleKeys,
                           transformers=transformers)
 
-            pickle.dump(model, data_f)
+            joblib.dump(model, data_f)
 
         print('Saved model to %s.' % model_path)
 
@@ -403,7 +404,10 @@ if __name__ == '__main__':
 
     if args.mode == 'test':
         with open(args.model_in_file, 'rb') as model_f:
-            model = pickle.load(model_f)
+            if args.model_in_file.endswith('jbl'):
+                model = joblib.load(model_f)
+            else:
+                model = pickle.load(model_f)
 
         # Model provided -- test.
         test(model, args)
