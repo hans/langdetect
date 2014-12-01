@@ -325,6 +325,15 @@ def test(model, args):
 
     print(evaluate(golds, guesses))
 
+
+def load_model(path):
+    if args.model_in_file.endswith('jbl'):
+        return joblib.load(args.model_in_file)
+    else:
+        with open(args.model_in_file, 'rb') as model_f:
+            return pickle.load(model_f)
+
+
 if __name__ == '__main__':
     # Build an ArgumentParser just for matching config file arguments
     conf_section = 'Main'
@@ -404,11 +413,7 @@ if __name__ == '__main__':
     ### Launch
 
     if args.mode == 'test':
-        if args.model_in_file.endswith('jbl'):
-            model = joblib.load(args.model_in_file)
-        else:
-            with open(args.model_in_file, 'rb') as model_f:
-                model = pickle.load(model_f)
+        model = load_model(args.model_in_file)
 
         # Model provided -- test.
         test(model, args)
