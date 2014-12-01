@@ -82,7 +82,7 @@ class Model(object):
         ensembling purposes (i.e., if the two can be successfully
         ensembled at test time)."""
 
-        return (self.languages == other_model.languages
+        return ([lang.lower() for lang in self.languages] == [lang.lower() for lang in other_model.languages]
                 and self.nodule_size == other_model.nodule_size
                 and self.feature_extractors == other_model.feature_extractors)
 
