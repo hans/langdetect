@@ -344,10 +344,10 @@ def test(models, languages, args):
 
 
 def load_model(path):
-    if args.model_in_file.endswith('jbl'):
-        return joblib.load(args.model_in_file)
+    if path.endswith('jbl'):
+        return joblib.load(path)
     else:
-        with open(args.model_in_file, 'rb') as model_f:
+        with open(path, 'rb') as model_f:
             return pickle.load(model_f)
 
 
