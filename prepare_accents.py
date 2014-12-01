@@ -1,6 +1,6 @@
 # Preprocessing for CSLU foreign accented English database
 
-# should be the same as prepare.py, except we don't need the SPHERE decoding step
+# similar to prepare.py, except we don't need the SPHERE decoding step
 
 import argparse
 from collections import defaultdict, namedtuple
@@ -69,7 +69,7 @@ def parse_args():
 # CSLU data is not already divided into train/dev/eval splits
 # need to create splits (randomly)
 
-# This is the equivalent of `load_split_data` for OGI
+# This is roughly the equivalent of `load_split_data` for OGI
 def get_filenames(splits, split_sizes, cslu_dir, languages):
     """
     Load a list of recording identifiers for the given dataset split
@@ -113,24 +113,6 @@ def get_filenames(splits, split_sizes, cslu_dir, languages):
             
     return ret
 
-    # # Load split data file
-    # split_path = os.path.join(cslu_dir, 'trn_test', split_name + '.lst')
-    # with open(split_path, 'r') as split_entries_f:
-    #     split_entries = []
-    #     for split_line in split_entries_f:
-    #         data = split_line.split()
-
-    #         # Find a matching language (field in data[1] stores unique
-    #         # ID, beginning with recording language)
-    #         for language in languages:
-    #             if data[1].startswith(language):
-    #                 # Matching language. Extract all recordings
-    #                 recording_names = data[2:len(data) - 2]
-    #                 ret[language].extend([data[1] + recording
-    #                                       for recording in recording_names])
-
-    # return dict(ret)
-
 
 # Expected file extensions associated with each section of the corpus
 TYPE_EXTENSIONS = {
@@ -171,14 +153,6 @@ def get_data_file(recording_id, data_type, cslu_dir):
         raise ValueError("Invalid language in recording ID: %s" % recording_id)
 
     language_path = os.path.join(type_path, language)
-
-    # if data_type == 'calls':
-    #     # Calls directory is further split by call ID
-    #     call_folder = recording_id[2:4]
-    #     language_path = os.path.join(language_path, call_folder)
-    #     if not os.path.isdir(language_path):
-    #         raise ValueError("Invalid call ID in recording ID: %s"
-    #                          % recording_id)
 
     filename = recording_id + '.' + TYPE_EXTENSIONS[data_type]
     file_path = os.path.join(language_path, filename)
@@ -228,22 +202,6 @@ def add_suffix(filename, suffix):
     return '.'.join(parts)
 
 
-# def decode_call_file(call_path):
-#     """
-#     Decode a NIST SPHERE call file into a normal WAV file.
-#     """
-
-#     decoded_path = add_suffix(call_path, 'decoded')
-
-#     try:
-#         retval = subprocess.call(["w_decode", '-f', call_path, decoded_path])
-#     except OSError, e:
-#         raise RuntimeError("Decoding failed. Is NIST SPHERE on your "
-#                            "path? (Look for a `w_decode` binary.)", e)
-
-#     return decoded_path
-
-
 def normalize_call_file(call_path, gain_level=-3):
     """Normalize the audio level in the given call file."""
 
@@ -263,7 +221,7 @@ def split_call_file(call_path, split_size=2, drop_short_segments=False):
     a list of paths to the resultant segments (which are placed in the
     same directory as the provided file, with some new extension).
     """
-
+    
     new_path = add_suffix(call_path, 'split')
 
     sox_params_str = 'trim 0 %i : newfile : restart' % split_size
@@ -360,8 +318,6 @@ if __name__ == '__main__':
     split_sizes = [.6, .2, .2] # exact numbers up for debate
 
     filenames = get_filenames(splits, split_sizes, args.cslu_dir, args.languages)
-    # filenames = {split: load_split_data(split, args.cslu_dir, args.languages)
-    #              for split in splits}
 
     for split in filenames:
         for language in filenames[split]:
