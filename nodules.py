@@ -3,6 +3,7 @@ import argparse
 import ConfigParser
 import cPickle as pickle
 from functools import partial
+import itertools
 import random
 import sys
 import time
@@ -76,6 +77,15 @@ class Model(object):
 
         return confidences
 
+    def compatible_with(self, other_model):
+        """Determine if this model is compatible with another model for
+        ensembling purposes (i.e., if the two can be successfully
+        ensembled at test time)."""
+
+        return (self.languages == other_model.languages
+                and self.nodule_size == other_model.nodule_size
+                and self.feature_extractors == other_model.feature_extractors)
+
 
 def makeNodule(segments, prev_nodule, feature_extractors, nodule_size):
     """Create a new `Nodule` from the provided segments and given
@@ -106,26 +116,33 @@ def makeNodule(segments, prev_nodule, feature_extractors, nodule_size):
     return Nodule(features=noduleFeatures)
 
 
-def classifyRecording(model, recording, args):
+def classifyRecording(models, languages, recording, args):
     """
-    Use a trained model to classify the given recording.
+    Use (a) trained model(s) to classify the given recording. The
+    provided models must be compatible (i.e., m1.compatible_with(m2) for
+    all m1, m2).
 
     Returns the index of the most likely language. (Index into
-    `model.languages`.)
+    `languages`.)
     """
 
-    nodules = createNodules(recording, model.feature_extractors,
-                            model.nodule_size)
+    # Models all share feature extractors + nodule size (compatible by
+    # contract)
+    feature_extractors = models[0].feature_extractors
+    nodule_size = models[0].nodule_size
 
-    votes = np.zeros(len(model.languages))
+    nodules = createNodules(recording, feature_extractors, nodule_size)
+
+    votes = np.zeros(len(languages))
     for nodule in nodules:
-        if args.soft_votes:
-            # confidences of each class applying to the given nodule
-            lang_confidences = model.class_confidences(nodule)
-            votes += lang_confidences
-        else:
-            decision = model.classify_nodule(nodule)
-            votes[decision] += 1
+        for model in models:
+            if args.soft_votes:
+                # confidences of each class applying to the given nodule
+                lang_confidences = model.class_confidences(nodule)
+                votes += lang_confidences
+            else:
+                decision = model.classify_nodule(nodule)
+                votes[decision] += 1
 
     return np.argmax(votes)
 
@@ -305,16 +322,16 @@ def evaluate(golds, guesses):
     return "Confusion matrix:\n\n%s\n\n%s" % (confusion, report)
 
 
-def test(model, args):
+def test(models, languages, args):
     dev_path = '%s/%%s.devtest.pkl' % args.data_dir
 
     golds, guesses = [], []
-    for langIndex, lang in enumerate(model.languages):
+    for langIndex, lang in enumerate(languages):
         with open(dev_path % lang, 'rb') as data_f:
             recordings = pickle.load(data_f)
 
         for recording in recordings:
-            guess = classifyRecording(model, recording, args)
+            guess = classifyRecording(models, languages, recording, args)
 
             if args.verbose:
                 result = 'RIGHT' if guess == langIndex else 'WRONG'
@@ -332,6 +349,19 @@ def load_model(path):
     else:
         with open(args.model_in_file, 'rb') as model_f:
             return pickle.load(model_f)
+
+
+def load_models(paths):
+    models = [load_model(path) for path in paths]
+
+    # Verify that models are pairwise compatible
+    for model1, model2 in itertools.combinations(models, 2):
+        if not model1.compatible_with(model2):
+            raise ArgumentError("Provided models not compatible.\n\t"
+                                "Model 1: %s\n\n\tModel 2: %s"
+                                % (model1, model2))
+
+    return models
 
 
 if __name__ == '__main__':
@@ -375,9 +405,12 @@ if __name__ == '__main__':
     model_options.add_argument('--model-out-dir',
                                help=('Directory to which model files '
                                      'should be saved (training only)'))
-    model_options.add_argument('--model-in-file',
+    model_options.add_argument('--model-in-file', action='append',
                                help=('Trained model file to use for '
-                                     'testing'))
+                                     'testing. If multiple models are '
+                                     'provided, they will be ensembled '
+                                     'during testing (must have same '
+                                     'feature sets)'))
 
     train_options = parser.add_argument_group('Training options')
     train_options.add_argument('-l', '--languages', type=lambda s: s.split(','),
@@ -413,10 +446,8 @@ if __name__ == '__main__':
     ### Launch
 
     if args.mode == 'test':
-        model = load_model(args.model_in_file)
-
-        # Model provided -- test.
-        test(model, args)
+        models = load_models(args.model_in_file)
+        test(models, models[0].languages, args)
     else:
         train(args, args.mode == 'grid_search')
 
