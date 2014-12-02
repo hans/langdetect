@@ -411,12 +411,13 @@ if __name__ == '__main__':
     model_options.add_argument('--model-out-dir',
                                help=('Directory to which model files '
                                      'should be saved (training only)'))
-    model_options.add_argument('--model-in-file', action='append',
+    model_options.add_argument('--model-in-file', type=lambda s: s.split(','),
                                help=('Trained model file to use for '
                                      'testing. If multiple models are '
-                                     'provided, they will be ensembled '
-                                     'during testing (must have same '
-                                     'feature sets)'))
+                                     'provided (comma-separated paths), '
+                                     'they will be ensembled during '
+                                     'testing (must have same feature '
+                                     'sets)'))
     model_options.add_argument('--model-weights',
                                type=lambda s: [float(f) for f in s.split(',')],
                                help=('Comma-separated list of float '
