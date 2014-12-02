@@ -64,18 +64,7 @@ class Model(object):
         """Return a list of confidences for each class given the nodule
         data."""
 
-        confidences = self.classifier.decision_function(self._make_example(nodule))
-
-        # scikit-learn linear models do this weird thing for n_classes = 2
-        # where they return a single confidence score.. need to fix that
-        if len(confidences) == 1:
-            confidence = confidences[0]
-            if confidence > 0:
-                return np.array([0, confidence])
-            else:
-                return np.array([-confidence, 0])
-
-        return confidences
+        return self.classifier.predict_proba(self._make_example(nodule))[0]
 
     def compatible_with(self, other_model):
         """Determine if this model is compatible with another model for
