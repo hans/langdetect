@@ -323,7 +323,10 @@ def evaluate(golds, guesses):
 
 
 def test(models, languages, args):
-    dev_path = '%s/%%s.devtest.pkl' % args.data_dir
+    if args.test_on_train:
+        dev_path = '%s/%%s.train.pkl' % args.data_dir
+    else:
+        dev_path = '%s/%%s.devtest.pkl' % args.data_dir
 
     golds, guesses = [], []
     for langIndex, lang in enumerate(languages):
@@ -396,10 +399,13 @@ if __name__ == '__main__':
     parser.add_argument('-d', '--data-dir',
                         help=('Directory containing preprocessed data '
                               '(as output by `prepare` module)'))
+
     parser.add_argument('-v', '--verbose', action='store_true', default=False)
     parser.add_argument('--soft-votes', default=False, action='store_true',
                         help=('Aggregate "soft votes" (confidences) per '
                               'nodule'))
+    parser.add_argument('--test-on-train', default=False, action='store_true',
+                        help=('Test on training data'))
 
     model_options = parser.add_mutually_exclusive_group(required=True)
     model_options.add_argument('--model-out-dir',
