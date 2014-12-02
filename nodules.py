@@ -412,7 +412,7 @@ if __name__ == '__main__':
                               'weights for adjusting per-model votes'))
 
     model_options = parser.add_mutually_exclusive_group(
-        required=('model_in_file' not in defaults))
+        required=(defaults is not None and 'model_in_file' not in defaults))
     model_options.add_argument('--model-out-dir',
                                help=('Directory to which model files '
                                      'should be saved (training only)'))
