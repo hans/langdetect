@@ -360,9 +360,9 @@ def load_models(paths):
     # Verify that models are pairwise compatible
     for model1, model2 in itertools.combinations(models, 2):
         if not model1.compatible_with(model2):
-            raise ArgumentError("Provided models not compatible.\n\t"
-                                "Model 1: %s\n\n\tModel 2: %s"
-                                % (model1, model2))
+            raise ValueError("Provided models not compatible.\n\t"
+                             "Model 1: %s\n\n\tModel 2: %s"
+                             % (model1, model2))
 
     return models
 
