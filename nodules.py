@@ -411,7 +411,8 @@ if __name__ == '__main__':
                         help=('Comma-separated list of float model '
                               'weights for adjusting per-model votes'))
 
-    model_options = parser.add_mutually_exclusive_group(required=True)
+    model_options = parser.add_mutually_exclusive_group(
+        required=('model_in_file' in defaults))
     model_options.add_argument('--model-out-dir',
                                help=('Directory to which model files '
                                      'should be saved (training only)'))
