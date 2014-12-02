@@ -135,14 +135,14 @@ def classifyRecording(models, languages, recording, args):
 
     votes = np.zeros(len(languages))
     for nodule in nodules:
-        for model in models:
+        for model_weight, model in zip(args.model_weights, models):
             if args.soft_votes:
                 # confidences of each class applying to the given nodule
                 lang_confidences = model.class_confidences(nodule)
-                votes += lang_confidences
+                votes += model_weight * lang_confidences
             else:
                 decision = model.classify_nodule(nodule)
-                votes[decision] += 1
+                votes[decision] += model_weight
 
     return np.argmax(votes)
 
@@ -417,6 +417,11 @@ if __name__ == '__main__':
                                      'provided, they will be ensembled '
                                      'during testing (must have same '
                                      'feature sets)'))
+    model_options.add_argument('--model-weights',
+                               type=lambda s: [float(f) for f in s.split(',')],
+                               help=('Comma-separated list of float '
+                                     'model weights for adjusting '
+                                     'per-model votes'))
 
     train_options = parser.add_argument_group('Training options')
     train_options.add_argument('-l', '--languages', type=lambda s: s.split(','),
@@ -448,6 +453,12 @@ if __name__ == '__main__':
         if args.languages is None:
             raise ValueError('--languages option required for training '
                              '(see --help)')
+
+    if args.model_weights is None:
+        args.model_weights = np.ones(len(args.model_in_file))
+    elif len(args.model_weights) != len(args.model_in_file):
+        raise ValueError("Number of model weights provided must match "
+                         "number of models")
 
     ### Launch
 
