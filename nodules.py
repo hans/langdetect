@@ -406,6 +406,10 @@ if __name__ == '__main__':
                               'nodule'))
     parser.add_argument('--test-on-train', default=False, action='store_true',
                         help=('Test on training data'))
+    parser.add_argument('--model-weights',
+                        type=lambda s: [float(f) for f in s.split(',')],
+                        help=('Comma-separated list of float model '
+                              'weights for adjusting per-model votes'))
 
     model_options = parser.add_mutually_exclusive_group(required=True)
     model_options.add_argument('--model-out-dir',
@@ -418,11 +422,6 @@ if __name__ == '__main__':
                                      'they will be ensembled during '
                                      'testing (must have same feature '
                                      'sets)'))
-    model_options.add_argument('--model-weights',
-                               type=lambda s: [float(f) for f in s.split(',')],
-                               help=('Comma-separated list of float '
-                                     'model weights for adjusting '
-                                     'per-model votes'))
 
     train_options = parser.add_argument_group('Training options')
     train_options.add_argument('-l', '--languages', type=lambda s: s.split(','),
