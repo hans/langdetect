@@ -314,6 +314,8 @@ def evaluate(golds, guesses):
 def test(models, languages, args):
     if args.test_on_train:
         dev_path = '%s/%%s.train.pkl' % args.data_dir
+    elif args.real_test:
+        dev_path = '%s/%%s.evaltest.pkl' % args.data_dir
     else:
         dev_path = '%s/%%s.devtest.pkl' % args.data_dir
 
@@ -395,6 +397,7 @@ if __name__ == '__main__':
                               'nodule'))
     parser.add_argument('--test-on-train', default=False, action='store_true',
                         help=('Test on training data'))
+    parser.add_argument('--real-test', default=False, action='store_true')
     parser.add_argument('--model-weights',
                         type=lambda s: [float(f) for f in s.split(',')],
                         help=('Comma-separated list of float model '
