@@ -457,18 +457,19 @@ if __name__ == '__main__':
 
     ### Launch
 
-    if args.model_weights is None:
-        args.model_weights = np.ones(len(args.model_in_file))
-    elif len(args.model_weights) != len(args.model_in_file):
-        raise ValueError("Number of model weights provided must match "
-                         "number of models")
-
     if args.mode == 'test':
+        if args.model_weights is None:
+            args.model_weights = np.ones(len(args.model_in_file))
+        elif len(args.model_weights) != len(args.model_in_file):
+            raise ValueError("Number of model weights provided must match "
+                             "number of models")
+
         models = load_models(args.model_in_file)
         test(models, models[0].languages, args)
     else:
         models = train(args, args.mode == 'grid_search')
 
+        args.model_weights = np.ones(1)
         for model in models:
             test([model], model.languages, args)
 
