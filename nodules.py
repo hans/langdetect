@@ -4,6 +4,7 @@ import ConfigParser
 import cPickle as pickle
 from functools import partial
 import itertools
+from pprint import pprint
 import random
 import sys
 import time
@@ -244,7 +245,7 @@ def train(args, do_grid_search=False):
         print('Saved grid-search model to %s.' % model_path)
         return
 
-
+    models = []
     for classifier_name, classifier_class in CLASSIFIER_TYPES.items():
         print('Training model %s on %i examples..' % (classifier_name, len(noduleX)))
         classifier = classifier_class()
@@ -265,8 +266,11 @@ def train(args, do_grid_search=False):
                       transformers=transformers)
 
         joblib.dump(model, model_path)
-
         print('Saved model to %s.' % model_path)
+
+        models.append(model)
+
+    return models
 
 
 def logistic_grid_search(X, y, cross_validation_proportion=0.25):
@@ -447,6 +451,10 @@ if __name__ == '__main__':
             raise ValueError('--languages option required for training '
                              '(see --help)')
 
+    print('Arguments:\n')
+    pprint(args)
+    print('\n\n')
+
     ### Launch
 
     if args.mode == 'test':
@@ -459,8 +467,10 @@ if __name__ == '__main__':
         models = load_models(args.model_in_file)
         test(models, models[0].languages, args)
     else:
-        train(args, args.mode == 'grid_search')
+        models = train(args, args.mode == 'grid_search')
 
+        for model in models:
+            test([model], model.languages, args)
 
 
 ### Scratch notes
