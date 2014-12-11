@@ -24,7 +24,7 @@ def parse_args():
                         help=('Comma-separated lest of first two letters '
                               'of names of each language to retain'))
 
-    parser.add_argument('-s', '--segment-length', type=int, default=2,
+    parser.add_argument('-s', '--segment-length', type=float, default=2,
                         help='Audio segment length')
     parser.add_argument('--drop-short-segments', default=False, action='store_true',
                         help=('Drop segments which are shorter than '
@@ -230,7 +230,7 @@ def split_call_file(call_path, split_size=2, drop_short_segments=False):
 
     new_path = add_suffix(call_path, 'split')
 
-    sox_params_str = 'trim 0 %i : newfile : restart' % split_size
+    sox_params_str = 'trim 0 %f : newfile : restart' % split_size
     sox_params = sox_params_str.split()
     retval = subprocess.call(['sox', call_path, new_path] + sox_params)
     if retval != 0:
