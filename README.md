@@ -31,6 +31,27 @@ into a format usable with this software:
 In this command the argument `ge,ma` specifies that we'd like to perform
 language detection with German and Mandarin recordings.
 
+## Training
+
+The `prepare.py` script generates a directory with `devtest`, `evaltest`, and
+`train` Pickle files for each provided language. To train on this data, run the
+command
+
+    python nodules.py -d <data_dir> train
+
+The `nodules.py` script will train SVM and logistic regression models with
+default settings and output them to a local directory. Training can take
+anywhere from 5 minutes (baseline) to 24 hours (SVM, complex feature set, lots
+of data).
+
+## Testing
+
+You can use the same `nodules.py` script to evaluate trained models. The train
+phase should save model files with `.jbl` extensions. Provide such a file to
+the `nodules.py` script like so:
+
+    python nodules.py -d <data_dir> --model-in-file <model_file> -v test
+
 [1]: https://catalog.ldc.upenn.edu/LDC94S17
 [2]: http://www.nist.gov/itl/iad/mig/tools.cfm
 [3]: http://sox.sourceforge.net/
